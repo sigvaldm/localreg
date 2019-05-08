@@ -1,0 +1,7 @@
+dist
+build
+__pycache__
+{project}.egg-info
+.pytest_cache
+.coverage
+**.pyc
