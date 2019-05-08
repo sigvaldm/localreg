@@ -25,24 +25,6 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 import numpy as np
-from scipy.optimize import least_squares, leastsq
-
-def polyfit2(x, y, x0, weights=None, degree=2, guess=np.array([1,1,1])):
-
-    W = np.diag(weights)
-
-    x0 = np.array([x0])
-
-    X = x[:, None]**np.arange(degree+1)
-
-    def fun(beta):
-        return X.T.dot(W).dot(y) - X.T.dot(W).dot(X).dot(beta)
-
-    res = least_squares(fun, guess)
-    beta = res.x
-
-    X0 = x0[:, None]**np.arange(degree+1)
-    return X0.dot(beta)
 
 def polyfit(x, y, x0, weights=None, degree=2):
 
@@ -113,8 +95,7 @@ def silverman(t):
     res = 0.5*np.exp(-np.abs(t)/np.sqrt(2))*np.sin(np.abs(t)/np.sqrt(2)+np.pi/4)
     return res
 
-def localreg(x, y, x0=None, degree=2, kernel=epanechnikov, width=1,
-             frac=None, polyfit=polyfit):
+def localreg(x, y, x0=None, degree=2, kernel=epanechnikov, width=1, frac=None):
 
     if x0 == None: x0=x
 
