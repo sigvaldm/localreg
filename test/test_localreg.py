@@ -19,3 +19,6 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 
 from localreg import *
 import pytest
+
+def test_dummy():
+    return True

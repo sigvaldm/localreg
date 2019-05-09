@@ -34,11 +34,10 @@ setup(name='localreg',
       author='Sigvald Marholm',
       author_email='marholm@marebakken.com',
       url='https://github.com/sigvaldm/localreg.git',
-      py_modules=['localreg'],
-      #install_requires=['scipy','frmt'],
+      packages=['localreg'],
+      install_requires=['numpy'],
       license='LGPL',
       classifiers=[
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7'

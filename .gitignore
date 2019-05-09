@@ -1,7 +1,7 @@
 dist
 build
 __pycache__
-{project}.egg-info
+localreg.egg-info
 .pytest_cache
 .coverage
 **.pyc
