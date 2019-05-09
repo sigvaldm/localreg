@@ -97,11 +97,11 @@ def silverman(t):
 
 def localreg(x, y, x0=None, degree=2, kernel=epanechnikov, width=1, frac=None):
 
-    if x0 == None: x0=x
+    if x0 is None: x0=x
 
     y0 = np.zeros_like(x0)
 
-    if frac==None:
+    if frac is None:
 
         for i, xi in enumerate(x0):
 
