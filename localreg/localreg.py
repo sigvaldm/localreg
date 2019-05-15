@@ -64,13 +64,13 @@ def biweight(t):
 def triweight(t):
     res = np.zeros_like(t)
     ind = np.where(np.abs(t)<=1)
-    res[ind] = (35/32)*(1-t[ind]**2)**2
+    res[ind] = (35/32)*(1-t[ind]**2)**3
     return res
 
 def tricube(t):
     res = np.zeros_like(t)
     ind = np.where(np.abs(t)<=1)
-    res[ind] = (1-np.abs(t[ind])**3)**3
+    res[ind] = (70/81)*(1-np.abs(t[ind])**3)**3
     return res
 
 def gaussian(t):
