@@ -8,7 +8,7 @@ before_install:
 - pip install pytest-cov
 - pip install coveralls
 script:
-- pytest
+- pytest test
 after_success:
 - coveralls
 deploy:
