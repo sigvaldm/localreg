@@ -22,6 +22,58 @@ import numpy as np
 import pytest
 
 #
+# MAIN TESTS
+#
+
+def test_polyfit_simple_linear():
+    x = np.array([0,  0,  1, 1, 2, 2])
+    y = np.array([-1, 1, -1, 3, -1, 5])
+    x0 = np.array([0, 1, 2])
+    assert np.allclose(polyfit(x, y, x0, degree=1), x0)
+
+def test_polyfit_simple_average():
+    x = np.array([0,  0,  1, 1, 2, 2])
+    y = np.array([-1, 1, -1, 3, -1, 5])
+    x0 = np.array([0, 1, 2])
+    assert np.allclose(polyfit(x, y, x0, degree=0), [1, 1, 1])
+
+def test_polyfit_realistic():
+    x = np.array([-6.89438   ,  7.94300378, 5.5221823 ,   9.77749217, -0.35979986,
+                   2.01456739,  4.80691814, 3.22260756,  -7.12156073, -8.69959441])
+    y = np.array([-1.74962299, -8.55733072, 8.56537608,   1.79095858,  4.43380336,
+                 -14.63365203,  5.41264117, 9.69660297, -13.85424098,  0.42264531])
+    x0 = np.array([1., 2., 3.])
+    assert np.allclose(polyfit(x, y, x0, degree=0),
+                       [-0.84728193, -0.84728193, -0.84728193], rtol=1e-3)
+    assert np.allclose(polyfit(x, y, x0, degree=1),
+                       [-0.85479608, -0.49940979, -0.14402349], rtol=1e-3)
+    assert np.allclose(polyfit(x, y, x0, degree=2),
+                       [0.65209843, 0.89184061, 1.05446368], rtol=1e-3)
+
+def test_localreg_realistic():
+    x = np.array([-6.89438   ,  7.94300378, 5.5221823 ,   9.77749217, -0.35979986,
+                   2.01456739,  4.80691814, 3.22260756,  -7.12156073, -8.69959441])
+    y = np.array([-1.74962299, -8.55733072, 8.56537608,   1.79095858,  4.43380336,
+                 -14.63365203,  5.41264117, 9.69660297, -13.85424098,  0.42264531])
+    x0 = np.array([1., 2., 3.])
+
+    # Testing all orders
+    assert np.allclose(localreg(x, y, x0, degree=0, kernel=epanechnikov, width=1),
+                       [0., -14.63365203, 8.9780852], rtol=1e-3)
+    assert np.allclose(localreg(x, y, x0, degree=1, kernel=epanechnikov, width=1),
+                       [0., -14.5487543 , 5.21322664], rtol=1e-3)
+    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, width=1),
+                       [0., -14.4523815 , 3.77134959], rtol=1e-3)
+
+    # Testing width
+    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, width=2),
+                       [ -2.54847529, -14.80997735,   7.00785276], rtol=1e-3)
+
+    # Testing frac
+    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, frac=0.5),
+                       [-5.70801451, -6.21823369,  4.33953829], rtol=1e-3)
+
+#
 # PARAMETRIC KERNEL TESTS
 #
 

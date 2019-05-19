@@ -28,6 +28,9 @@ import numpy as np
 
 def polyfit(x, y, x0, weights=None, degree=2):
 
+    if weights is None:
+        weights = np.ones_like(x)
+
     s = np.sqrt(weights)
 
     X = x[:, None]**np.arange(degree + 1)
