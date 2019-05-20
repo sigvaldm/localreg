@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from localreg import *
-from time import time
 
 np.random.seed(1234)
 x = np.linspace(1.5, 5, 2000)
@@ -17,8 +16,5 @@ plt.plot(x, yf, label='Ground truth ($\sin(x^2)$)')
 plt.plot(x, y0, label='Moving average')
 plt.plot(x, y1, label='Local linear regression')
 plt.plot(x, y2, label='Local quadratic regression')
-plt.title('Local Polynomial Regression')
-plt.xlabel('x')
-plt.ylabel('y')
 plt.legend()
 plt.show()
