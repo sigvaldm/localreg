@@ -55,23 +55,31 @@ def test_localreg_realistic():
                    2.01456739,  4.80691814, 3.22260756,  -7.12156073, -8.69959441])
     y = np.array([-1.74962299, -8.55733072, 8.56537608,   1.79095858,  4.43380336,
                  -14.63365203,  5.41264117, 9.69660297, -13.85424098,  0.42264531])
-    x0 = np.array([1., 2., 3.])
+    x0 = np.array([2., 3.])
 
     # Testing all orders
     assert np.allclose(localreg(x, y, x0, degree=0, kernel=epanechnikov, width=1),
-                       [0., -14.63365203, 8.9780852], rtol=1e-3)
+                       [-14.63365203, 8.9780852], rtol=1e-3)
     assert np.allclose(localreg(x, y, x0, degree=1, kernel=epanechnikov, width=1),
-                       [0., -14.5487543 , 5.21322664], rtol=1e-3)
+                       [-14.5487543 , 5.21322664], rtol=1e-3)
     assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, width=1),
-                       [0., -14.4523815 , 3.77134959], rtol=1e-3)
+                       [-14.4523815 , 3.77134959], rtol=1e-3)
 
     # Testing width
     assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, width=2),
-                       [ -2.54847529, -14.80997735,   7.00785276], rtol=1e-3)
+                       [ -14.80997735,   7.00785276], rtol=1e-3)
 
     # Testing frac
     assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, frac=0.5),
-                       [-5.70801451, -6.21823369,  4.33953829], rtol=1e-3)
+                       [-6.21823369,  4.33953829], rtol=1e-3)
+
+def test_localreg_narrow_kernel(caplog):
+    x = np.array([0., 1., 2.])
+    y = np.array([0., 1., 2.])
+    x0 = np.array([0.5])
+    y0 = localreg(x, y, x0, degree=2, kernel=epanechnikov, width=0.4)
+    assert np.isnan(y0)[0]
+    assert(len(caplog.records) == 1)
 
 #
 # PARAMETRIC KERNEL TESTS

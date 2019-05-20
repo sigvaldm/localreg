@@ -25,8 +25,15 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 import numpy as np
+import logging
+
+logger = logging.getLogger('localreg')
+logging.basicConfig()
 
 def polyfit(x, y, x0, weights=None, degree=2):
+
+    if len(x)==0:
+        return np.nan*np.ones_like(x0)
 
     if weights is None:
         weights = np.ones_like(x)
@@ -131,5 +138,8 @@ def localreg(x, y, x0=None, degree=2, kernel=epanechnikov, width=1, frac=None):
 
             y0[i] = polyfit(x[inds], y[inds], np.array([xi]),
                             weights, degree=degree)
+
+    if np.any(np.isnan(y0)):
+        logger.warning("Kernel do not always span any data points")
 
     return y0
