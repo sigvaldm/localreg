@@ -43,7 +43,15 @@ def polyfit(x, y, x0, weights=None, degree=2):
     X = x[:, None]**np.arange(degree + 1)
     X0 = x0[:, None]**np.arange(degree + 1)
 
-    beta = np.linalg.lstsq(X*s[:, None], y*s, rcond=None)[0]
+    lhs = X*s[:, None]
+    rhs = y*s
+
+    # This is what NumPy uses for default from version 1.15 onwards,
+    # and what 1.14 uses when rcond=None. Computing it here ensures
+    # support for older versions of NumPy.
+    rcond = np.finfo(lhs.dtype).eps * max(*lhs.shape)
+
+    beta = np.linalg.lstsq(lhs, rhs, rcond=rcond)[0]
 
     return X0.dot(beta)
 
