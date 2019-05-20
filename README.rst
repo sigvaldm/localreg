@@ -24,26 +24,36 @@ Or download the GitHub repository https://github.com/sigvaldm/localreg.git and r
 
 Introduction
 ------------
-Local polynomial regression is performed using the function
-``localreg(x, y, x0=None, degree=2, kernel=epanechnikov, width=1, frac=None)``, where
-``x`` and ``y`` are the :math:``x`` and :math:``y``-values of the data to smooth, respectively. ``x0`` is the :math:``x``-values at which to compute the smoothed :math:``y``-values. By default this is the same as ``x``, but beware that the run time is proportional to the size of ``x0``, so if you have many datapoints, it may be worthwhile to specify a smaller ``x0`` yourself. ``degree`` is the degree of the polynomial which is locally fitted to the data, e.g., ``degree=1`` means you get local linear regression. For ``degree=0`` the method reduces to a weighted moving average. ``kernel`` is the kernel function (or weighting window) and is a pure function. In how big a neighborhood the local regression is to be performed can be specified by either ``width`` or ``frac``. ``width`` scales the width of the weighting kernels, and for kernels with compact support, this is actually half of the width. For Gaussian windows, etc., it is the "standard deviation". If ``frac`` is specified, ``width`` is ignored, and is instead set to be big enough to use the specified fraction of all datapoints, e.g., ``frac=0.5`` means that half of the datapoints are used at any time.
+Local polynomial regression is performed using the function::
 
-Implemented weighting functions are:
+    localreg(x, y, x0=None, degree=2, kernel=epanechnikov, width=1, frac=None)
+
+where ``x`` and ``y`` are the x and y-values of the data to smooth, respectively.
+``x0`` is the x-values at which to compute smoothed values. By default this is the same as ``x``, but beware that the run time is proportional to the size of ``x0``, so if you have many datapoints, it may be worthwhile to specify a smaller ``x0`` yourself.
+
+Local polynomial regression works by fitting a polynomial of degree ``degree`` to the datapoints in vicinity of where you wish to compute a smoothed value (``x0``), and then evaluating that polynomial at ``x0``. For ``degree=0`` it reduces to a weighted moving average. A weighting function or kernel ``kernel`` is used to assign a higher weight to datapoints near ``x0``. The argument to ``kernel`` is a pure function of one argument so it is possible to define custom kernels. The following kernels are already implemented:
+
     - ``rectangular``
     - ``triangular``
     - ``epanechnikov``
     - ``biweight``
     - ``triweight``
     - ``tricube``
-    - ``gaussian``
+    - ``gaussian`` (non-compact)
     - ``cosine``
-    - ``logistic``
-    - ``sigmoid``
-    - ``silverman``
+    - ``logistic`` (non-compact)
+    - ``sigmoid`` (non-compact)
+    - ``silverman`` (non-compact)
+
+Having a kernel wich tapers off toward the edges, i.e., not a rectangular kernel, results in a smooth output.
+
+The width of the kernel can be scaled by the parameter ``width``, which is actually half of the kernel-width for kernels with compact support. For kernels with non-compact support, like the Gaussian kernel, it is simply a scaling parameter, akin to the standard deviation. Having a wider kernel and including more datapoints lowers the noise (variance) but increases the bias as the regression will not be able to capture variations on a scale much narrower than the kernel window.
+
+For unevenly spaced datapoints, having a fixed width means that a variable number of datapoints are included in the window, and hence the noise/variance is variable too. However, the bias is fixed. Using a width that varies such that a fixed number of datapoints is included leads instead to constant noise/variance but fixed bias. This can be acheived by specifying ``frac`` which overrules ``width`` and specifies the fraction of all datapoints to be included in the width of the kernel.
 
 Example Usage
 -------------
-::
+The below example exhibits several interesting features::
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -68,7 +78,9 @@ Example Usage
 
 .. image:: examples/basic.png
 
+If there's a slope in the data near an edge, a simple moving average will fail to take into account the slope, as seen in the figure, since most of the datapoints will be to the right (or left) of ``x0``. A local linear (or higher order regression) is able to compensate for this. We also see that as the frequency of the oscillations increases, the local linear regression is not able to keep up, because the variations become too small compared to the window. A smaller window would help, at the cost of more noise in the regression. Another option is to increase the degree to 2. The quadratic regression is better at filling the valleys and the hills. For too rapid changes compared to the kernel, however, quadratic polynomials will also start failing.
 
+It is also worth noting that a higher degree also comes with an increase in variance, which can show up as small spurious oscillations. It is therefore not very common to go higher than 2, although localreg supports arbitrary degree.
 
 .. [Hastie] T. Hastie, R. Tibshirani and J. Friedman *The Elements of Statistical Learing -- Data Mining, Inference, and Prediction*, Second Edition, Springer, 2017.
 .. [Cleveland] W. Cleveland *Robust Locally Weighted Regression and Smoothing Scatterplots*, Journal of the Americal Statistical Associations, 74, 1979.
