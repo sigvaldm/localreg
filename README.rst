@@ -33,17 +33,17 @@ where ``x`` and ``y`` are the x and y-values of the data to smooth, respectively
 
 Local polynomial regression works by fitting a polynomial of degree ``degree`` to the datapoints in vicinity of where you wish to compute a smoothed value (``x0``), and then evaluating that polynomial at ``x0``. For ``degree=0`` it reduces to a weighted moving average. A weighting function or kernel ``kernel`` is used to assign a higher weight to datapoints near ``x0``. The argument to ``kernel`` is a pure function of one argument so it is possible to define custom kernels. The following kernels are already implemented:
 
-    - ``rectangular``
-    - ``triangular``
-    - ``epanechnikov``
-    - ``biweight``
-    - ``triweight``
-    - ``tricube``
-    - ``gaussian`` (non-compact)
-    - ``cosine``
-    - ``logistic`` (non-compact)
-    - ``sigmoid`` (non-compact)
-    - ``silverman`` (non-compact)
+- ``rectangular``
+- ``triangular``
+- ``epanechnikov``
+- ``biweight``
+- ``triweight``
+- ``tricube``
+- ``gaussian`` (non-compact)
+- ``cosine``
+- ``logistic`` (non-compact)
+- ``sigmoid`` (non-compact)
+- ``silverman`` (non-compact)
 
 Having a kernel wich tapers off toward the edges, i.e., not a rectangular kernel, results in a smooth output.
 
