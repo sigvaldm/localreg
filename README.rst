@@ -10,6 +10,9 @@ localreg
 .. image:: https://img.shields.io/pypi/pyversions/localreg.svg
     :target: https://pypi.org/project/localreg
 
+.. image:: https://zenodo.org/badge/185620541.svg
+    :target: https://zenodo.org/badge/latestdoi/185620541
+
 Smoothing of noisy data series through *local polynomial regression* (including LOESS/LOWESS).
 
 Installation
