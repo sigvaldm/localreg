@@ -1,7 +1,10 @@
+#!/usr/bin/env python
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from tqdm import tqdm
+import sys
 
 def read_RBF_data(fname):
     """
@@ -61,31 +64,38 @@ def plot_data(data, centers):
 def Gaussian(distance, radius=0.1):
     return np.exp(-0.5*distance/radius)
 
-def train(indep, centers, dep, rbf):
-    assert indep.shape[0]==dep.shape[0]
-    assert indep.shape[1]==centers.shape[1]
-    matrix = np.zeros((len(indep), len(centers)), dtype=float)
-    for i in tqdm(range(len(indep))):
-        for j in range(len(centers)):
-            distance = np.linalg.norm(indep[i,:]-centers[j,:])
-            matrix[i,j] = rbf(distance)
-    coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, dep, rcond=None)
-    return coeffs, residual
+class RBFnet(object):
 
-def predict(coeffs, indep, centers, rbf):
-    res = 0.
-    for j in range(len(centers)):
-        res += coeffs[j]*rbf(np.linalg.norm(indep-centers[j,:]))
-    return res
+    def train(self, input, output, centers, rbf):
+        assert input.shape[0]==output.shape[0]
+        assert input.shape[1]==centers.shape[1]
+        matrix = np.zeros((len(input), len(centers)), dtype=float)
+        for i in tqdm(range(len(input))):
+            for j in range(len(centers)):
+                distance = np.linalg.norm(input[i,:]-centers[j,:])
+                matrix[i,j] = rbf(distance)
+        coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, output, rcond=None)
+        self.coeffs = coeffs
+        self.residual = residual
+        self.rbf = rbf
+
+    def predict(self, input):
+        output = 0.
+        for j in range(len(centers)):
+            output += self.coeffs[j]*self.rbf(np.linalg.norm(input-centers[j,:]))
+        return output
 
 N = 100
-data = read_RBF_data('langmuir/langmuir_training_data.in')
+data = read_RBF_data(sys.argv[1])
 currents = data[:,0:4]*1e6 # [uA]
 # density = data[:,5]*1e-12
 density = data[:,4]*1e-10
 centers = kmeans_centers(currents[:,0:4], N)
 # plot_data(currents, centers)
 
-coeffs, residual = train(currents, centers, density, Gaussian)
-pred = predict(coeffs, currents[0,:], centers, Gaussian)
+# coeffs, residual = train(currents, centers, density, Gaussian)
+# pred = predict(coeffs, currents[0,:], centers, Gaussian)
+net = RBFnet()
+net.train(currents, density, centers, Gaussian)
+pred = net.predict(current[0,:])
 print(pred, density[0], (pred-density[0])/density[0])
