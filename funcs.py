@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 import sys
+from frmt import print_table
 
 def read_RBF_data(fname):
     """
@@ -78,24 +79,37 @@ class RBFnet(object):
         self.coeffs = coeffs
         self.residual = residual
         self.rbf = rbf
+        # print(residual)
 
     def predict(self, input):
-        output = 0.
+        # print(input)
+        output = np.zeros(input.shape[0])
         for j in range(len(centers)):
-            output += self.coeffs[j]*self.rbf(np.linalg.norm(input-centers[j,:]))
+            output += self.coeffs[j]*self.rbf(np.linalg.norm(input-centers[j,:], axis=1))
         return output
 
+    def validate(self, input, output):
+        predicted = self.predict(input)
+        deviations = np.abs(predicted-output)
+        # print(np.linalg.norm(deviations)**2)
+        print_table(zip(output, predicted), format='{:g}')
+        # print_table(zip(input, output, predicted))
+        # print(np.array(list(zip(input, output, predicted))))
+
 N = 100
+M = 10000
+K = 2
 data = read_RBF_data(sys.argv[1])
 currents = data[:,0:4]*1e6 # [uA]
 # density = data[:,5]*1e-12
 density = data[:,4]*1e-10
-centers = kmeans_centers(currents[:,0:4], N)
+centers = kmeans_centers(currents[:M,0:4], N)
 # plot_data(currents, centers)
 
 # coeffs, residual = train(currents, centers, density, Gaussian)
 # pred = predict(coeffs, currents[0,:], centers, Gaussian)
 net = RBFnet()
-net.train(currents, density, centers, Gaussian)
-pred = net.predict(current[0,:])
-print(pred, density[0], (pred-density[0])/density[0])
+net.train(currents[:M], density[:M], centers, Gaussian)
+pred = net.predict(currents[0:K,:])
+print(pred, density[0:K], (pred-density[0:K])/density[0:K])
+net.validate(currents[:M], density[:M])
