@@ -67,7 +67,8 @@ def gaussian(t):
 
 class RBFnet(object):
 
-    def train(self, input, output, centers=10, rbf=gaussian, radius=1):
+    def train(self, input, output, centers=10, rbf=gaussian, radius=1,
+              normalize=True):
         """
         Train the RBF net.
 
@@ -87,7 +88,7 @@ class RBFnet(object):
 
         rbf: function
             Which radial basis function to use. The function should take a
-            signel scalar argument, and is shifted according to the centers and
+            single scalar argument, and is shifted according to the centers and
             scaled according to the radius internally according to the
             following equation:
 
@@ -95,20 +96,41 @@ class RBFnet(object):
 
         radius: float
             The radius to use in rbf
+
+        normalize: bool
+            Whether to shift the input and output to zero mean (standardize)
+            and scale it to have unit standard deviation (normalize). This
+            may improve some numerical properties, but is otherwise invisible
+            to the user, since all quantities are scaled back appropriately by
+            RBFnet.
         """
 
+        if normalize:
+            self.input_shift = np.mean(input, axis=0)
+            self.input_scale = np.std(input, axis=0)
+            self.output_shift = np.mean(output, axis=0)
+            self.output_scale = np.std(output, axis=0)
+        else:
+            self.input_shift = 0
+            self.input_scale = 1
+            self.output_shift = 0
+            self.output_scale = 1
+
+        inp = (input-self.input_shift)/self.input_scale
+        outp = (output-self.output_shift)/self.output_scale
+
         if not isinstance(centers, np.ndarray):
-            centers = kmeans_centers(input, centers)
+            centers = kmeans_centers(inp, centers)
 
-        assert input.shape[0]==output.shape[0]
-        assert input.shape[1]==centers.shape[1]
+        assert inp.shape[0]==outp.shape[0]
+        assert inp.shape[1]==centers.shape[1]
 
-        matrix = np.zeros((len(input), len(centers)), dtype=float)
-        for i in tqdm(range(len(input))):
+        matrix = np.zeros((len(inp), len(centers)), dtype=float)
+        for i in tqdm(range(len(inp))):
             for j in range(len(centers)):
-                distance = np.linalg.norm(input[i,:]-centers[j,:])
+                distance = np.linalg.norm(inp[i,:]-centers[j,:])
                 matrix[i,j] = rbf(distance/radius)
-        coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, output, rcond=None)
+        coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, outp, rcond=None)
         self.coeffs = coeffs
         self.residual = residual
         self.rbf = rbf
@@ -129,10 +151,15 @@ class RBFnet(object):
         -------
         numpy.ndarray where output[i] is the prediction of point i
         """
-        output = np.zeros(input.shape[0])
+        inp = (input-self.input_shift)/self.input_scale
+
+        output = np.zeros(inp.shape[0])
         for j in range(len(self.centers)):
-            distance = np.linalg.norm(input-self.centers[j,:], axis=1)
+            distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
             output += self.coeffs[j]*self.rbf(distance/self.radius)
+
+        output = output*self.output_scale + self.output_shift
+
         return output
 
     def error(self, input, output):
@@ -163,15 +190,14 @@ N = 100
 M = 10000
 K = 2
 data = read_RBF_data(sys.argv[1])
-currents = data[:,0:4]*1e6 # [uA]
-# density = data[:,5]*1e-12
-density = data[:,4]*1e-10
-# centers = kmeans_centers(currents[:M], N)
+currents = data[:,0:4]
+density = data[:,4]
+
 # print(currents.shape)
 # plot_data(currents, centers)
 
 net = RBFnet()
 net.train(currents[:M], density[:M], 100)
 pred = net.predict(currents[0:K,:])
-print(pred, density[0:K], (pred-density[0:K])/density[0:K])
+print("Pred:", pred, density[0:K], (pred-density[0:K])/density[0:K])
 net.error(currents[:M], density[:M])
