@@ -62,7 +62,7 @@ def plot_data(data, centers):
         plt.ylabel('$I_{}\,[\mu A]$'.format(j))
     plt.show()
 
-def Gaussian(distance, radius=0.1):
+def Gaussian(distance, radius=0.3):
     return np.exp(-0.5*distance/radius)
 
 class RBFnet(object):
@@ -91,8 +91,10 @@ class RBFnet(object):
     def validate(self, input, output):
         predicted = self.predict(input)
         deviations = np.abs(predicted-output)
+        reldev = deviations/output
         # print(np.linalg.norm(deviations)**2)
-        print_table(zip(output, predicted), format='{:g}')
+        print_table(zip(output, predicted, deviations, reldev), format='{:g}')
+        print(np.mean(reldev))
         # print_table(zip(input, output, predicted))
         # print(np.array(list(zip(input, output, predicted))))
 
