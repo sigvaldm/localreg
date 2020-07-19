@@ -6,6 +6,7 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 import sys
 from frmt import print_table
+from time import time
 
 def read_RBF_data(fname):
     """
@@ -126,10 +127,10 @@ class RBFnet(object):
         assert inp.shape[1]==centers.shape[1]
 
         matrix = np.zeros((len(inp), len(centers)), dtype=float)
-        for i in tqdm(range(len(inp))):
-            for j in range(len(centers)):
-                distance = np.linalg.norm(inp[i,:]-centers[j,:])
-                matrix[i,j] = rbf(distance/radius)
+        for j in range(len(centers)):
+            distance = np.linalg.norm(inp[:,:]-centers[j,:], axis=1)
+            matrix[:,j] = rbf(distance/radius)
+
         coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, outp, rcond=None)
         self.coeffs = coeffs
         self.residual = residual
@@ -197,7 +198,7 @@ density = data[:,4]
 # plot_data(currents, centers)
 
 net = RBFnet()
-net.train(currents[:M], density[:M], 100)
+net.train(currents[:M], density[:M], N)
 pred = net.predict(currents[0:K,:])
 print("Pred:", pred, density[0:K], (pred-density[0:K])/density[0:K])
 net.error(currents[:M], density[:M])
