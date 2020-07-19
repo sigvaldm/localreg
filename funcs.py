@@ -62,30 +62,31 @@ def plot_data(data, centers):
         plt.ylabel('$I_{}\,[\mu A]$'.format(j))
     plt.show()
 
-def Gaussian(distance, radius=0.3):
-    return np.exp(-0.5*distance/radius)
+def gaussian(t):
+    return np.exp(-0.5*t**2)
 
 class RBFnet(object):
 
-    def train(self, input, output, centers, rbf):
+    def train(self, input, output, centers, rbf, radius=1):
         assert input.shape[0]==output.shape[0]
         assert input.shape[1]==centers.shape[1]
         matrix = np.zeros((len(input), len(centers)), dtype=float)
         for i in tqdm(range(len(input))):
             for j in range(len(centers)):
                 distance = np.linalg.norm(input[i,:]-centers[j,:])
-                matrix[i,j] = rbf(distance)
+                matrix[i,j] = rbf(distance/radius)
         coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, output, rcond=None)
         self.coeffs = coeffs
         self.residual = residual
         self.rbf = rbf
+        self.radius = radius
         # print(residual)
 
     def predict(self, input):
         # print(input)
         output = np.zeros(input.shape[0])
         for j in range(len(centers)):
-            output += self.coeffs[j]*self.rbf(np.linalg.norm(input-centers[j,:], axis=1))
+            output += self.coeffs[j]*self.rbf(np.linalg.norm(input-centers[j,:], axis=1)/self.radius)
         return output
 
     def validate(self, input, output):
@@ -108,10 +109,10 @@ density = data[:,4]*1e-10
 centers = kmeans_centers(currents[:M,0:4], N)
 # plot_data(currents, centers)
 
-# coeffs, residual = train(currents, centers, density, Gaussian)
-# pred = predict(coeffs, currents[0,:], centers, Gaussian)
+# coeffs, residual = train(currents, centers, density, gaussian)
+# pred = predict(coeffs, currents[0,:], centers, gaussian)
 net = RBFnet()
-net.train(currents[:M], density[:M], centers, Gaussian)
+net.train(currents[:M], density[:M], centers, gaussian)
 pred = net.predict(currents[0:K,:])
 print(pred, density[0:K], (pred-density[0:K])/density[0:K])
 net.validate(currents[:M], density[:M])
