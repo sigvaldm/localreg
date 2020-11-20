@@ -44,6 +44,13 @@ def kmeans_centers(data, N, random_state=None):
     N: int
         Number of clusters/centers for radial bases to compute
 
+    random_state: int or None
+        When centers is an integer, random numbers are used to compute the
+        best possible centers. This may lead to slightly different results,
+        since the seed of the random number generator is different every
+        time. For exact reproducibility, set random_state to an integer.
+        See also the random_state variable in Scikit-Learn.
+
     Returns
     -------
     numpy.ndarray where centers[i,j] is center i, coordinate j
@@ -97,7 +104,8 @@ class RBFnet(object):
                 rbf((input-center)/radius)
 
         radius: float
-            The radius to use in rbf
+            The radius to use in the function rbf in terms of standard
+            deviations. It is a hyperparameter in of order-of-magnitude unity.
 
         normalize: bool
             Whether to shift the input and output to zero mean (standardize)
@@ -124,12 +132,17 @@ class RBFnet(object):
             self.input_scale = 1
             self.output_shift = 0
             self.output_scale = 1
+            # print(np.std(input))
+            radius *= 1e-6
+            # print(radius)
 
         inp = (input-self.input_shift)/self.input_scale
         outp = (output-self.output_shift)/self.output_scale
 
         if not isinstance(centers, np.ndarray):
             centers = kmeans_centers(inp, centers, random_state=random_state)
+        else:
+            centers = (centers-self.input_shift)/self.input_scale
 
         assert inp.shape[0]==outp.shape[0]
         assert inp.shape[1]==centers.shape[1]
@@ -142,6 +155,7 @@ class RBFnet(object):
         coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, outp, rcond=None)
         self.coeffs = coeffs
         self.residual = residual
+
         self.rbf = rbf
         self.radius = radius
         self.centers = centers
@@ -230,13 +244,13 @@ voltage = data[:,6]
 training_set = (currents[:M], density[:M])
 validation_set = (currents[M:M2], density[M:M2])
 
-training_set = (currents[:M], voltage[:M])
-validation_set = (currents[M:M2], voltage[M:M2])
+# training_set = (currents[:M], voltage[:M])
+# validation_set = (currents[M:M2], voltage[M:M2])
 
 # training_set = (currents[:M], temperature[:M])
 # validation_set = (currents[M:M2], temperature[M:M2])
 
-centers = 50
+centers = 5
 
 net = RBFnet()
 net.train(*training_set, centers=centers, radius=1.5, random_state=5)
@@ -245,30 +259,46 @@ pred = net.predict(training_set[0][:K])
 error = net.error(*validation_set)
 print("Relative validation error: ", error)
 
+# input_shift = np.mean(training_set[0], axis=0)
+# input_scale = np.std(training_set[0], axis=0)
+# input = (training_set[0]-input_shift)/input_scale
+
+# lower = np.min(input, axis=0)
+# upper = np.max(input, axis=0)
+# maxdist = max(upper-lower)
+# dim = len(upper)
+# radius_0 = maxdist/(centers**(1./dim))
+# print('guess: ', radius_0)
+
+# centers = kmeans_centers(training_set[0], centers, 5)
+# centers_center = np.mean(centers)
+# print('centers_center: ', centers_center, np.std(centers))
+
 i = 0
 def f(radius):
-    net.train(*training_set, centers=centers, radius=radius, random_state=5)
+    net.train(*training_set, centers=centers, radius=radius, random_state=5, normalize=False)
     global i
     i = i + 1
     err = net.error(*training_set)
     print(i, radius[0], err)
     return err
 
-radius_0 = 1
-res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':True},
-               # method = 'powell')
-               method = 'nelder-mead')
-print(res.x)
 
-# rs = np.logspace(-1, 3, 50)
-# err = []
-# for r in tqdm(rs):
-#     net.train(*training_set, centers=centers, radius=r, random_state=5)
-#     err.append(net.error(*training_set))
+# radius_0 = 1
+# res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':True},
+#                # method = 'powell')
+#                method = 'nelder-mead')
+# print(res.x)
 
-# plt.figure()
-# plt.loglog(rs, err)
-# plt.show()
+rs = np.logspace(-1, 3, 50)
+err = []
+for r in tqdm(rs):
+    net.train(*training_set, centers=centers, radius=r, random_state=5)
+    err.append(net.error(*training_set))
+
+plt.figure()
+plt.loglog(rs, err)
+plt.show()
 
 
 # print(currents.shape)
