@@ -76,8 +76,26 @@ def gaussian(t):
 
 class RBFnet(object):
 
+    def __init__(self):
+        self.untrained = True
+
+    def autotrain(self, input, output, centers=10, rbf=gaussian, random_state=None):
+
+        def f(radius):
+            self.train(input, output, centers=centers, radius=radius, random_state=5, reuse=True)
+            err = net.error(*training_set)
+            print(radius[0], err)
+            return err
+
+        radius_0 = 1
+        res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':True},
+                       # method = 'powell')
+                       method = 'nelder-mead')
+        print(res.x)
+
+
     def train(self, input, output, centers=10, rbf=gaussian, radius=1,
-              normalize=True, random_state=None):
+              random_state=None, reuse=False):
         """
         Train the RBF net.
 
@@ -105,51 +123,36 @@ class RBFnet(object):
 
         radius: float
             The radius to use in the function rbf in terms of standard
-            deviations. It is a hyperparameter in of order-of-magnitude unity.
+            deviations. It is a hyperparameter in order-of-magnitude unity.
 
-        normalize: bool
-            Whether to shift the input and output to zero mean (standardize)
-            and scale it to have unit standard deviation (normalize). This
-            may improve some numerical properties, but is otherwise invisible
-            to the user, since all quantities are scaled back appropriately by
-            RBFnet.
-
-        random_state: int or None
-            When centers is an integer, random numbers are used to compute the
-            best possible centers. This may lead to slightly different results,
-            since the seed of the random number generator is different every
-            time. For exact reproducibility, set random_state to an integer.
-            See also the random_state variable in Scikit-Learn.
+        reuse: bool
+            Whether or not to reuse the centers and normalizations from
+            previous training. This speeds up training, but should only be
+            done when training on the same, or at least similar, data.
+            Useful for hyperparameter tuning.
         """
 
-        if normalize:
+        if self.untrained or reuse==False:
             self.input_shift = np.mean(input, axis=0)
             self.input_scale = np.std(input, axis=0)
             self.output_shift = np.mean(output, axis=0)
             self.output_scale = np.std(output, axis=0)
-        else:
-            self.input_shift = 0
-            self.input_scale = 1
-            self.output_shift = 0
-            self.output_scale = 1
-            # print(np.std(input))
-            radius *= 1e-6
-            # print(radius)
 
         inp = (input-self.input_shift)/self.input_scale
         outp = (output-self.output_shift)/self.output_scale
 
-        if not isinstance(centers, np.ndarray):
-            centers = kmeans_centers(inp, centers, random_state=random_state)
-        else:
-            centers = (centers-self.input_shift)/self.input_scale
+        if self.untrained or reuse==False:
+            if not isinstance(centers, np.ndarray):
+                self.centers = kmeans_centers(inp, centers, random_state=random_state)
+            else:
+                self.centers = (centers-self.input_shift)/self.input_scale
 
         assert inp.shape[0]==outp.shape[0]
-        assert inp.shape[1]==centers.shape[1]
+        assert inp.shape[1]==self.centers.shape[1]
 
-        matrix = np.zeros((len(inp), len(centers)), dtype=float)
-        for j in range(len(centers)):
-            distance = np.linalg.norm(inp[:,:]-centers[j,:], axis=1)
+        matrix = np.zeros((len(inp), len(self.centers)), dtype=float)
+        for j in range(len(self.centers)):
+            distance = np.linalg.norm(inp[:,:]-self.centers[j,:], axis=1)
             matrix[:,j] = rbf(distance/radius)
 
         coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, outp, rcond=None)
@@ -158,7 +161,7 @@ class RBFnet(object):
 
         self.rbf = rbf
         self.radius = radius
-        self.centers = centers
+        self.untrained = False
 
     def plot_centers(self, axis, indeps=(0,1), *args, **kwargs):
         """
@@ -250,10 +253,11 @@ validation_set = (currents[M:M2], density[M:M2])
 # training_set = (currents[:M], temperature[:M])
 # validation_set = (currents[M:M2], temperature[M:M2])
 
-centers = 5
+centers = 50
 
 net = RBFnet()
-net.train(*training_set, centers=centers, radius=1.5, random_state=5)
+# net.train(*training_set, centers=centers, radius=1.5, random_state=5)
+net.autotrain(*training_set, centers=centers, random_state=5)
 
 pred = net.predict(training_set[0][:K])
 error = net.error(*validation_set)
@@ -274,15 +278,14 @@ print("Relative validation error: ", error)
 # centers_center = np.mean(centers)
 # print('centers_center: ', centers_center, np.std(centers))
 
-i = 0
-def f(radius):
-    net.train(*training_set, centers=centers, radius=radius, random_state=5, normalize=False)
-    global i
-    i = i + 1
-    err = net.error(*training_set)
-    print(i, radius[0], err)
-    return err
-
+# i = 0
+# def f(radius):
+#     net.train(*training_set, centers=centers, radius=radius, random_state=5, reuse=True)
+#     global i
+#     i = i + 1
+#     err = net.error(*training_set)
+#     print(i, radius[0], err)
+#     return err
 
 # radius_0 = 1
 # res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':True},
@@ -290,15 +293,15 @@ def f(radius):
 #                method = 'nelder-mead')
 # print(res.x)
 
-rs = np.logspace(-1, 3, 50)
-err = []
-for r in tqdm(rs):
-    net.train(*training_set, centers=centers, radius=r, random_state=5)
-    err.append(net.error(*training_set))
+# rs = np.logspace(-2, 4, 200)
+# err = []
+# for r in tqdm(rs):
+#     net.train(*training_set, centers=centers, radius=r, random_state=5, reuse=True)
+#     err.append(net.error(*training_set))
 
-plt.figure()
-plt.loglog(rs, err)
-plt.show()
+# plt.figure()
+# plt.loglog(rs, err)
+# plt.show()
 
 
 # print(currents.shape)
