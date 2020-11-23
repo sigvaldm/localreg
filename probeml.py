@@ -79,18 +79,20 @@ class RBFnet(object):
     def __init__(self):
         self.untrained = True
 
-    def autotrain(self, input, output, centers=10, rbf=gaussian, random_state=None):
+    def autotrain(self, input, output, centers=10, rbf=gaussian, random_state=None, verbose=False):
 
+        self.fcall = 0
         def f(radius):
+            self.fcall += 1
             self.train(input, output, centers=centers, radius=radius, random_state=5, reuse=True)
             err = net.error(*training_set)
-            print(radius[0], err)
+            if verbose: print(self.fcall, radius[0], err)
             return err
 
         radius_0 = 1
-        res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':True},
-                       # method = 'powell')
-                       method = 'nelder-mead')
+        res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':verbose},
+                       method = 'powell')
+                       # method = 'nelder-mead')
         print(res.x)
 
 
@@ -253,15 +255,15 @@ validation_set = (currents[M:M2], density[M:M2])
 # training_set = (currents[:M], temperature[:M])
 # validation_set = (currents[M:M2], temperature[M:M2])
 
-centers = 50
+# centers = 50
 
-net = RBFnet()
+# net = RBFnet()
 # net.train(*training_set, centers=centers, radius=1.5, random_state=5)
-net.autotrain(*training_set, centers=centers, random_state=5)
+# net.autotrain(*training_set, centers=centers, random_state=5)
 
-pred = net.predict(training_set[0][:K])
-error = net.error(*validation_set)
-print("Relative validation error: ", error)
+# pred = net.predict(training_set[0][:K])
+# error = net.error(*validation_set)
+# print("Relative validation error: ", error)
 
 # input_shift = np.mean(training_set[0], axis=0)
 # input_scale = np.std(training_set[0], axis=0)
@@ -293,31 +295,38 @@ print("Relative validation error: ", error)
 #                method = 'nelder-mead')
 # print(res.x)
 
-# rs = np.logspace(-2, 4, 200)
-# err = []
-# for r in tqdm(rs):
-#     net.train(*training_set, centers=centers, radius=r, random_state=5, reuse=True)
-#     err.append(net.error(*training_set))
+plt.figure()
+rs = np.logspace(-2, 3, 200)
+ns = [5,10,20,50,100]
+for i, n in enumerate(tqdm(ns)):
+    net = RBFnet()
+    err = []
+    for r in tqdm(rs):
+        net.train(*training_set, centers=n, radius=r, random_state=5, reuse=True)
+        err.append(net.error(*training_set))
+    plt.loglog(rs, err, 'C{}'.format(i))
 
-# plt.figure()
-# plt.loglog(rs, err)
-# plt.show()
+for i, n in enumerate(tqdm(ns)):
+    net = RBFnet()
+    net.autotrain(*training_set, centers=n, random_state=5)
+    plt.axvline(net.radius, color='C{}'.format(i))
+plt.show()
 
 
 # print(currents.shape)
 # plot_data(currents, net)
 
 
-pred = net.predict(training_set[0][:K])
-# print_table(zip(pred, density[0:K], (pred-density[0:K])/density[0:K]))
-error = net.error(*validation_set)
-print("Relative validation error optimized: ", error)
+# pred = net.predict(training_set[0][:K])
+# # print_table(zip(pred, density[0:K], (pred-density[0:K])/density[0:K]))
+# error = net.error(*validation_set)
+# print("Relative validation error optimized: ", error)
 
-plot = plt.plot
-plt.figure()
-# plot(density[:M2:10], net.predict(currents[:M2:10]), '+', ms=3)
-# plot([1e11,12e11],[1e11,12e11], '-k', lw=0.8)
-plot(training_set[1], net.predict(training_set[0]), '+', ms=3)
-r = (min(training_set[1]), max(training_set[1]))
-plot(r,r,'-k',lw=0.8)
-plt.show()
+# plot = plt.plot
+# plt.figure()
+# # plot(density[:M2:10], net.predict(currents[:M2:10]), '+', ms=3)
+# # plot([1e11,12e11],[1e11,12e11], '-k', lw=0.8)
+# plot(training_set[1], net.predict(training_set[0]), '+', ms=3)
+# r = (min(training_set[1]), max(training_set[1]))
+# plot(r,r,'-k',lw=0.8)
+# plt.show()
