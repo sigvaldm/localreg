@@ -75,16 +75,41 @@ def gaussian(t):
     return np.exp(-0.5*t**2)
 
 class RBFnet(object):
+    """
+    A radial basis function (RBF) machine learning network.
+
+    An arbitrary and possibly unknown function f(x) is approximated as a
+    sum of radial basis functions g,
+
+        f(x) ~ sum_i w_i g((x-c_i)/r)
+
+    x is the input, possibly a vector. c_i and w_i are the centers and weights
+    of basis function i, while r is its radius (the same for all basis
+    functions). c_i, w_i and r are found during training, and are later used
+    for prediction.
+
+    A training (or prediction) data set is generally represented by arrays
+    input (for x) and output (for y), where input[i,j] is data point i,
+    independent variable j, and output[i] is data point j of the dependent
+    variable, or output. Multiple output variables is simply represented
+    by multiple RBFnet objects.
+    """
 
     def __init__(self):
-        self.untrained = True
+        self.input_shift = 0
+        self.input_scale = 1
+        self.output_shift = 0
+        self.output_scale = 1
 
-    def autotrain(self, input, output, centers=10, rbf=gaussian, random_state=None, verbose=False):
+    def autotrain(self, input, output, num=10, rbf=gaussian, random_state=None, verbose=False):
+
+        self.adapt_normalization(input, output)
+        self.compute_centers(input, num=num, random_state=random_state)
 
         self.fcall = 0
         def f(radius):
             self.fcall += 1
-            self.train(input, output, centers=centers, radius=radius, random_state=5, reuse=True)
+            self.fit_weights(input, output, radius=radius)
             err = net.error(*training_set)
             if verbose: print(self.fcall, radius[0], err)
             return err
@@ -96,10 +121,10 @@ class RBFnet(object):
         print(res.x)
 
 
-    def train(self, input, output, centers=10, rbf=gaussian, radius=1,
-              random_state=None, reuse=False):
+    def train(self, input, output, num=10, rbf=gaussian, radius=1,
+              random_state=None):
         """
-        Train the RBF net.
+        Train the RBF net to learn the relation between input and output.
 
         Parameters
         ----------
@@ -109,7 +134,7 @@ class RBFnet(object):
         output: numpy.ndarray
             output[i] is data point i, dependent variable
 
-        centers: int or numpy.ndarray
+        num: int or numpy.ndarray
             If centers is an array, the centers of the radial basis functions
             are pre-specified, and centers[i,j] is center i, coordinate j. If
             centers is an integer, it is the number of radial basis functions,
@@ -134,20 +159,47 @@ class RBFnet(object):
             Useful for hyperparameter tuning.
         """
 
-        if self.untrained or reuse==False:
-            self.input_shift = np.mean(input, axis=0)
+        self.adapt_normalization(input, output)
+        self.compute_centers(input, num, random_state)
+        self.fit_weights(input, output, radius, rbf)
+
+    def adapt_normalization(self, input, output, keep_aspect=False):
+        """
+        Adapt normalization of network to data, such that the normalized data
+        inside the network will have zero mean and a standard deviation of one.
+
+        Parameters
+        ----------
+        input: numpy.ndarray
+            input[i,j] is data point i, independent variable j
+
+        output: numpy.ndarray
+            output[i] is data point i, dependent variable
+
+        keep_aspect: bool
+            Whether to scale all independent variables by the same factor,
+            i.e., to keep the aspect ratio, or to scale them independently
+            such that the standard deviation is one along each axis. It may
+            make sense to keep the aspect ratio if the input variables have
+            the same physical dimension.
+        """
+        self.output_shift = np.mean(output, axis=0)
+        self.output_scale = np.std(output, axis=0)
+        self.input_shift = np.mean(input, axis=0)
+        if keep_aspect:
+            self.input_scale = np.std(input)
+        else:
             self.input_scale = np.std(input, axis=0)
-            self.output_shift = np.mean(output, axis=0)
-            self.output_scale = np.std(output, axis=0)
+
+    def compute_centers(self, input, num, random_state=None):
+
+        inp = (input-self.input_shift)/self.input_scale
+        self.centers = kmeans_centers(inp, num, random_state=random_state)
+
+    def fit_weights(self, input, output, radius=1, rbf=gaussian):
 
         inp = (input-self.input_shift)/self.input_scale
         outp = (output-self.output_shift)/self.output_scale
-
-        if self.untrained or reuse==False:
-            if not isinstance(centers, np.ndarray):
-                self.centers = kmeans_centers(inp, centers, random_state=random_state)
-            else:
-                self.centers = (centers-self.input_shift)/self.input_scale
 
         assert inp.shape[0]==outp.shape[0]
         assert inp.shape[1]==self.centers.shape[1]
@@ -164,6 +216,7 @@ class RBFnet(object):
         self.rbf = rbf
         self.radius = radius
         self.untrained = False
+
 
     def plot_centers(self, axis, indeps=(0,1), *args, **kwargs):
         """
@@ -295,20 +348,23 @@ validation_set = (currents[M:M2], density[M:M2])
 #                method = 'nelder-mead')
 # print(res.x)
 
+net = RBFnet()
+
 plt.figure()
 rs = np.logspace(-2, 3, 200)
-ns = [5,10,20,50,100]
+ns = [5,10,20]#,50,100]
 for i, n in enumerate(tqdm(ns)):
-    net = RBFnet()
     err = []
+    net.adapt_normalization(*training_set)
+    net.compute_centers(training_set[0], num=n, random_state=5)
     for r in tqdm(rs):
-        net.train(*training_set, centers=n, radius=r, random_state=5, reuse=True)
+        net.fit_weights(*training_set, r)
         err.append(net.error(*training_set))
     plt.loglog(rs, err, 'C{}'.format(i))
 
 for i, n in enumerate(tqdm(ns)):
     net = RBFnet()
-    net.autotrain(*training_set, centers=n, random_state=5)
+    net.autotrain(*training_set, num=n, random_state=5)
     plt.axvline(net.radius, color='C{}'.format(i))
 plt.show()
 
