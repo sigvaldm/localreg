@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 import sys
 from frmt import print_table
-from time import time
+from time import time, sleep
 
 def read_RBF_data(fname):
     """
@@ -30,34 +30,6 @@ def read_RBF_data(fname):
             data.append(line.split())
     data = np.array(data, dtype=float)
     return data
-
-def kmeans_centers(data, N, random_state=None):
-    """
-    Get the centers of the radial basis functions (pivots) using K-means
-    clustering.
-
-    Parameters
-    ----------
-    data: numpy.ndarray
-        data[i,j] is data point i, coordinate j
-
-    N: int
-        Number of clusters/centers for radial bases to compute
-
-    random_state: int or None
-        When centers is an integer, random numbers are used to compute the
-        best possible centers. This may lead to slightly different results,
-        since the seed of the random number generator is different every
-        time. For exact reproducibility, set random_state to an integer.
-        See also the random_state variable in Scikit-Learn.
-
-    Returns
-    -------
-    numpy.ndarray where centers[i,j] is center i, coordinate j
-    """
-    clustering = KMeans(n_clusters=N, random_state=random_state).fit(data)
-    centers = clustering.cluster_centers_
-    return centers
 
 def plot_data(data, net):
     """
@@ -101,30 +73,20 @@ class RBFnet(object):
         self.output_shift = 0
         self.output_scale = 1
 
-    def autotrain(self, input, output, num=10, rbf=gaussian, random_state=None, verbose=False):
-
-        self.adapt_normalization(input, output)
-        self.compute_centers(input, num=num, random_state=random_state)
-
-        self.fcall = 0
-        def f(radius):
-            self.fcall += 1
-            self.fit_weights(input, output, radius=radius)
-            err = net.error(*training_set)
-            if verbose: print(self.fcall, radius[0], err)
-            return err
-
-        radius_0 = 1
-        res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':verbose},
-                       method = 'powell')
-                       # method = 'nelder-mead')
-        print(res.x)
-
-
-    def train(self, input, output, num=10, rbf=gaussian, radius=1,
-              random_state=None):
+    def train(self, input, output, num=50, radius=None, rbf=gaussian,
+              random_state=None, keep_aspect=False, verbose=False):
         """
         Train the RBF net to learn the relation between input and output.
+
+        Training consists of three steps, which may be run in sequence as
+        separate functions for maximum flexibility:
+
+            1. adapt_normalization()
+            2. compute_centers()
+            3. fit_weights() or fit_weights_and_radius() if radius is None
+
+        This method is simply a wrapper, with similarly named input. Only the
+        most important are listed below.
 
         Parameters
         ----------
@@ -134,34 +96,17 @@ class RBFnet(object):
         output: numpy.ndarray
             output[i] is data point i, dependent variable
 
-        num: int or numpy.ndarray
-            If centers is an array, the centers of the radial basis functions
-            are pre-specified, and centers[i,j] is center i, coordinate j. If
-            centers is an integer, it is the number of radial basis functions,
-            and their centers will be created internally by K-means clustering.
-
-        rbf: function
-            Which radial basis function to use. The function should take a
-            single scalar argument, and is shifted according to the centers and
-            scaled according to the radius internally according to the
-            following equation:
-
-                rbf((input-center)/radius)
-
-        radius: float
-            The radius to use in the function rbf in terms of standard
-            deviations. It is a hyperparameter in order-of-magnitude unity.
-
-        reuse: bool
-            Whether or not to reuse the centers and normalizations from
-            previous training. This speeds up training, but should only be
-            done when training on the same, or at least similar, data.
-            Useful for hyperparameter tuning.
+        num: integer
+            Number of radial basis functions.
         """
 
-        self.adapt_normalization(input, output)
+        self.adapt_normalization(input, output, keep_aspect)
         self.compute_centers(input, num, random_state)
-        self.fit_weights(input, output, radius, rbf)
+
+        if radius is None:
+            self.fit_weights_and_radius(input, output, rbf, verbose)
+        else:
+            self.fit_weights(input, output, radius, rbf)
 
     def adapt_normalization(self, input, output, keep_aspect=False):
         """
@@ -171,10 +116,10 @@ class RBFnet(object):
         Parameters
         ----------
         input: numpy.ndarray
-            input[i,j] is data point i, independent variable j
+            input[i,j] is data point i, independent variable j.
 
         output: numpy.ndarray
-            output[i] is data point i, dependent variable
+            output[i] is data point i, dependent variable.
 
         keep_aspect: bool
             Whether to scale all independent variables by the same factor,
@@ -192,17 +137,65 @@ class RBFnet(object):
             self.input_scale = np.std(input, axis=0)
 
     def compute_centers(self, input, num, random_state=None):
+        """
+        Compute the centers of the radial basis functions using K-means
+        clustering.
 
+        Parameters
+        ----------
+        input: numpy.ndarray
+            input[i,j] is data point i, independent variable j.
+
+        num: integer
+            Number of radial basis functions.
+
+        random_state: integer
+            State of random number generator used to compute the centers. For
+            exactly reproducible results this must be set manually. See
+            sklearn.cluster.KMeans in Scikit-Learn.
+        """
         inp = (input-self.input_shift)/self.input_scale
-        self.centers = kmeans_centers(inp, num, random_state=random_state)
+        clustering = KMeans(n_clusters=num, random_state=random_state).fit(inp)
+        self.centers = clustering.cluster_centers_
 
     def fit_weights(self, input, output, radius=1, rbf=gaussian):
+        """
+        Fit the weights to the training data using exact linear least squares.
+
+        Parameters
+        ----------
+        input: numpy.ndarray
+            input[i,j] is data point i, independent variable j.
+
+        output: numpy.ndarray
+            output[i] is data point i, dependent variable.
+
+        radius: float
+            The radius of the basis functions on normalized data. When
+            adapt_normalization is used, it is the radius in terms of
+            the standard deviation, and is usually near one. This is
+            a hyperparameter that can be tuned for minimum error.
+
+        rbf: function
+            Which radial basis function to use. The function should take a
+            single scalar argument, and is shifted according to the centers and
+            scaled according to the radius internally according to the
+            following equation:
+
+                rbf((input-center)/radius)
+
+        """
 
         inp = (input-self.input_shift)/self.input_scale
         outp = (output-self.output_shift)/self.output_scale
 
-        assert inp.shape[0]==outp.shape[0]
-        assert inp.shape[1]==self.centers.shape[1]
+        assert inp.shape[0]==outp.shape[0], \
+            "different number of data points (length of axis 0) in input and output"
+
+        assert inp.shape[1]==self.centers.shape[1], \
+            "input has {} independent variables (length of axis 1) when fitting "\
+            "weights, but had {} when computing centers"\
+            .format(inp.shape[1], self.centers.shape[1])
 
         matrix = np.zeros((len(inp), len(self.centers)), dtype=float)
         for j in range(len(self.centers)):
@@ -212,11 +205,26 @@ class RBFnet(object):
         coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, outp, rcond=None)
         self.coeffs = coeffs
         self.residual = residual
-
         self.rbf = rbf
         self.radius = radius
-        self.untrained = False
 
+
+    def fit_weights_and_radius(self, input, output, rbf=gaussian, verbose=True):
+
+            self.fcall = 0
+            def f(radius):
+                self.fcall += 1
+                self.fit_weights(input, output, radius, rbf)
+                err = net.error(*training_set)
+                # if verbose: print(self.fcall, radius[0], err)
+                return err
+
+            radius_0 = 1
+            res = minimize(f, radius_0, tol=0.00001,
+                           options={'maxiter':100, 'disp':verbose},
+                           method = 'powell')
+                           # method = 'nelder-mead')
+            # print(res.x)
 
     def plot_centers(self, axis, indeps=(0,1), *args, **kwargs):
         """
@@ -289,6 +297,31 @@ class RBFnet(object):
         # return rms
         return np.mean(np.abs(relative_error))
 
+    def save(self, fname):
+        """
+        Save trained model to file.
+
+        Parameters
+        ----------
+        fname: string
+            filename
+        """
+        # Radius
+        # Centers
+        # Normalization
+        pass
+
+    def load(self, fname):
+        """
+        Load a previously trained model from file.
+
+        Parameters
+        ----------
+        fname: string
+            filename
+        """
+        pass
+
 N = 100
 M = 9000
 M2 = 10000
@@ -312,7 +345,7 @@ validation_set = (currents[M:M2], density[M:M2])
 
 # net = RBFnet()
 # net.train(*training_set, centers=centers, radius=1.5, random_state=5)
-# net.autotrain(*training_set, centers=centers, random_state=5)
+# net.train(*training_set, centers=centers, random_state=5)
 
 # pred = net.predict(training_set[0][:K])
 # error = net.error(*validation_set)
@@ -328,10 +361,6 @@ validation_set = (currents[M:M2], density[M:M2])
 # dim = len(upper)
 # radius_0 = maxdist/(centers**(1./dim))
 # print('guess: ', radius_0)
-
-# centers = kmeans_centers(training_set[0], centers, 5)
-# centers_center = np.mean(centers)
-# print('centers_center: ', centers_center, np.std(centers))
 
 # i = 0
 # def f(radius):
@@ -353,18 +382,18 @@ net = RBFnet()
 plt.figure()
 rs = np.logspace(-2, 3, 200)
 ns = [5,10,20]#,50,100]
-for i, n in enumerate(tqdm(ns)):
-    err = []
-    net.adapt_normalization(*training_set)
-    net.compute_centers(training_set[0], num=n, random_state=5)
-    for r in tqdm(rs):
-        net.fit_weights(*training_set, r)
-        err.append(net.error(*training_set))
-    plt.loglog(rs, err, 'C{}'.format(i))
+# for i, n in enumerate(tqdm(ns)):
+#     err = []
+#     net.adapt_normalization(*training_set)
+#     net.compute_centers(training_set[0], num=n, random_state=5)
+#     for r in tqdm(rs):
+#         net.fit_weights(*training_set, r)
+#         err.append(net.error(*training_set))
+#     plt.loglog(rs, err, 'C{}'.format(i))
 
 for i, n in enumerate(tqdm(ns)):
     net = RBFnet()
-    net.autotrain(*training_set, num=n, random_state=5)
+    net.train(*training_set, num=n, random_state=5, verbose=True)
     plt.axvline(net.radius, color='C{}'.format(i))
 plt.show()
 
