@@ -8,6 +8,7 @@ from tqdm import tqdm
 import sys
 from frmt import print_table
 from time import time, sleep
+from scipy.stats import pearsonr
 
 def read_RBF_data(fname):
     """
@@ -20,7 +21,7 @@ def read_RBF_data(fname):
 
     Returns
     -------
-    numpynp.array where data[i,j] is row i, column j
+    numpy.array where data[i,j] is row i, column j
     """
     data = []
     with open(fname) as file:
@@ -45,6 +46,54 @@ def plot_data(data, net):
 
 def gaussian(t):
     return np.exp(-0.5*t**2)
+
+# Error metrics:
+# Pearson R
+# Bias of relative and absolute
+# Standard deviation of relative and absolute
+# bias = np.mean
+# stdev = np.std
+# pearsonr = np.st
+
+def rms_error(true, pred):
+    e = pred-true
+    return np.sqrt(np.sum(e**2)/len(e))
+
+def rms_rel_error(true, pred):
+    e = (pred-true)/true
+    return np.sqrt(np.sum(e**2)/len(e))
+
+def max_abs_error(true, pred):
+    e = pred-true
+    return np.max(np.abs(e))
+
+def max_rel_error(true, pred):
+    e = (pred-true)/true
+    return np.max(np.abs(e))
+
+def mean_abs_error(true, pred):
+    e = pred-true
+    return np.mean(np.abs(e))
+
+def mean_rel_error(true, pred):
+    e = (pred-true)/true
+    return np.mean(np.abs(e))
+
+def error_bias(true, pred):
+    e = pred-true
+    return np.mean(e)
+
+def rel_error_bias(true, pred):
+    e = (pred-true)/true
+    return np.mean(e)
+
+def error_std(true, pred):
+    e = pred-true
+    return np.std(e)
+
+def rel_error_std(true, pred):
+    e = (pred-true)/true
+    return np.std(e)
 
 class RBFnet(object):
     """
@@ -74,7 +123,8 @@ class RBFnet(object):
         self.output_scale = 1
 
     def train(self, input, output, num=50, radius=None, rbf=gaussian,
-              random_state=None, keep_aspect=False, verbose=False):
+              random_state=None, keep_aspect=False, verbose=False,
+              measure=rms_error):
         """
         Train the RBF net to learn the relation between input and output.
 
@@ -85,8 +135,8 @@ class RBFnet(object):
             2. compute_centers()
             3. fit_weights() or fit_weights_and_radius() if radius is None
 
-        This method is simply a wrapper, with similarly named input. Only the
-        most important are listed below.
+        This method is simply a wrapper, that takes the same input as these
+        functions. Only the most important input are listed below.
 
         Parameters
         ----------
@@ -104,7 +154,7 @@ class RBFnet(object):
         self.compute_centers(input, num, random_state)
 
         if radius is None:
-            self.fit_weights_and_radius(input, output, rbf, verbose)
+            self.fit_weights_and_radius(input, output, rbf, verbose, measure)
         else:
             self.fit_weights(input, output, radius, rbf)
 
@@ -154,7 +204,8 @@ class RBFnet(object):
             exactly reproducible results this must be set manually. See
             sklearn.cluster.KMeans in Scikit-Learn.
         """
-        inp = (input-self.input_shift)/self.input_scale
+        # inp = (input-self.input_shift)/self.input_scale
+        inp = self.normalize_input(input)
         clustering = KMeans(n_clusters=num, random_state=random_state).fit(inp)
         self.centers = clustering.cluster_centers_
 
@@ -186,8 +237,10 @@ class RBFnet(object):
 
         """
 
-        inp = (input-self.input_shift)/self.input_scale
-        outp = (output-self.output_shift)/self.output_scale
+        # inp = (input-self.input_shift)/self.input_scale
+        # outp = (output-self.output_shift)/self.output_scale
+        inp = self.normalize_input(input)
+        outp = self.normalize_output(output)
 
         assert inp.shape[0]==outp.shape[0], \
             "different number of data points (length of axis 0) in input and output"
@@ -208,23 +261,48 @@ class RBFnet(object):
         self.rbf = rbf
         self.radius = radius
 
+    def fit_weights_and_radius(self, input, output, rbf=gaussian,
+                               measure=rms_error, verbose=True,
+                               method='powell', options=None,
+                               tol=1e-6):
+        """
+        Similarly as the method fit_weights(), but this function uses an
+        iterative minimizer to find the optimal radius.
 
-    def fit_weights_and_radius(self, input, output, rbf=gaussian, verbose=True):
+        Parameters
+        ----------
+        measure: function
+            The error measure used during optimization, with signature
+            measure(true_values, predicted_values).
+
+        verbose: bool
+            Whether to show convergence status
+
+        See fit_weights for: input, output, rbf
+        See scipy.optimize.minimize for: method, options, tol
+        """
+
+            def fun(radius):
+                self.fit_weights(input, output, radius, rbf)
+                self.error = measure(output, self.predict(input))
+                return self.error
+
+            fmt = "{:<5}  {:<20}  {:<20}"
+
+            if verbose:
+                print(fmt.format("it.", "radius", "error"))
 
             self.fcall = 0
-            def f(radius):
-                self.fcall += 1
-                self.fit_weights(input, output, radius, rbf)
-                err = net.error(*training_set)
-                # if verbose: print(self.fcall, radius[0], err)
-                return err
+            def callback(params):
+                if verbose:
+                    self.fcall += 1
+                    print(fmt.format(self.fcall, params[0], self.error))
 
             radius_0 = 1
-            res = minimize(f, radius_0, tol=0.00001,
-                           options={'maxiter':100, 'disp':verbose},
-                           method = 'powell')
-                           # method = 'nelder-mead')
-            # print(res.x)
+            res = minimize(fun, radius_0, tol=1e-6,
+                           options=options,
+                           callback=callback,
+                           method=method)
 
     def plot_centers(self, axis, indeps=(0,1), *args, **kwargs):
         """
@@ -242,7 +320,8 @@ class RBFnet(object):
         Further accepts the same arguments as matplotlib.axis.plot.
         """
         indeps = list(indeps)
-        unnormalized_centers = net.centers[:,indeps]*net.input_scale[indeps]+net.input_shift[indeps]
+        # unnormalized_centers = net.centers[:,indeps]*net.input_scale[indeps]+net.input_shift[indeps]
+        unnormalized_centers = self.denormalize_input(net.centers)[:,indeps]
         axis.plot(*unnormalized_centers.T, *args, 'x', **kwargs)
 
     def predict(self, input):
@@ -258,44 +337,34 @@ class RBFnet(object):
         -------
         numpy.ndarray where output[i] is the prediction of point i
         """
-        inp = (input-self.input_shift)/self.input_scale
+        # inp = (input-self.input_shift)/self.input_scale
+        inp = self.normalize_input(input)
 
         output = np.zeros(inp.shape[0])
         for j in range(len(self.centers)):
             distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
             output += self.coeffs[j]*self.rbf(distance/self.radius)
 
-        output = output*self.output_scale + self.output_shift
+        # output = output*self.output_scale + self.output_shift
+        output = self.denormalize_output(output)
 
         return output
 
-    def error(self, input, output):
-        """
-        The prediction error of the RBF net for a given set of data points.
-        This will be the training error, validation error or test error
-        depending on whether the set is the training set, the validation set
-        or the test set.
+    def normalize_input(self, input):
+        norm_input = (input-self.input_shift)/self.input_scale
+        return norm_input
 
-        Parameters
-        ----------
-        input: numpy.ndarray
-            input[i,j] is data point i, independent variable j
+    def normalize_output(self, output):
+        norm_output = (output-self.output_shift)/self.output_scale
+        return norm_output
 
-        output: numpy.ndarray
-            output[i] is data point i, dependent variable
-        """
-        predicted = self.predict(input)
-        error = predicted-output
-        relative_error = error/output
-        mu = np.mean(relative_error)
-        sigma = np.std(relative_error)
-        rms = np.sqrt(np.sum(error**2))
-        # print(np.linalg.norm(deviations)**2)
-        # print_table(zip(output, predicted, deviations, reldev), format='{:g}')
-        # print_table(zip(input, output, predicted))
-        # print(np.array(list(zip(input, output, predicted))))
-        # return rms
-        return np.mean(np.abs(relative_error))
+    def denormalize_input(self, norm_input):
+        input = norm_input*self.input_scale + self.input_shift
+        return input
+
+    def denormalize_output(self, norm_output):
+        output = norm_output*self.output_scale + self.output_shift
+        return output
 
     def save(self, fname):
         """
@@ -379,28 +448,37 @@ validation_set = (currents[M:M2], density[M:M2])
 
 net = RBFnet()
 
+net.train(*training_set, radius=None, verbose=True, random_state=5, measure=mean_rel_error)
+pred = net.predict(training_set[0])
+npred = net.normalize_output(pred)
+ntrue = net.normalize_output(training_set[1])
+
+print(np.sqrt(net.residual/len(pred)))
+print(rms_error(npred,ntrue))
+
+
 plt.figure()
 rs = np.logspace(-2, 3, 200)
 ns = [5,10,20]#,50,100]
-# for i, n in enumerate(tqdm(ns)):
-#     err = []
-#     net.adapt_normalization(*training_set)
-#     net.compute_centers(training_set[0], num=n, random_state=5)
-#     for r in tqdm(rs):
-#         net.fit_weights(*training_set, r)
-#         err.append(net.error(*training_set))
-#     plt.loglog(rs, err, 'C{}'.format(i))
-
+ns = [50]
 for i, n in enumerate(tqdm(ns)):
-    net = RBFnet()
-    net.train(*training_set, num=n, random_state=5, verbose=True)
-    plt.axvline(net.radius, color='C{}'.format(i))
-plt.show()
+    err = []
+    net.adapt_normalization(*training_set)
+    net.compute_centers(training_set[0], num=n, random_state=5)
+    for r in tqdm(rs):
+        net.fit_weights(*training_set, r)
+        # err.append(net.error(*training_set))
+        err.append(rms_error(training_set[1], net.predict(training_set[0])))
+    plt.loglog(rs, err, 'C{}'.format(i))
 
+# for i, n in enumerate(tqdm(ns)):
+#     net = RBFnet()
+#     net.train(*training_set, num=n, random_state=5)
+#     plt.axvline(net.radius, color='C{}'.format(i))
+plt.show()
 
 # print(currents.shape)
 # plot_data(currents, net)
-
 
 # pred = net.predict(training_set[0][:K])
 # # print_table(zip(pred, density[0:K], (pred-density[0:K])/density[0:K]))
