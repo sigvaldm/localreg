@@ -129,7 +129,7 @@ class RBFnet(object):
         Train the RBF net to learn the relation between input and output.
 
         Training consists of three steps, which may be run in sequence as
-        separate functions for maximum flexibility:
+        separate methods for maximum flexibility:
 
             1. adapt_normalization()
             2. compute_centers()
@@ -154,7 +154,7 @@ class RBFnet(object):
         self.compute_centers(input, num, random_state)
 
         if radius is None:
-            self.fit_weights_and_radius(input, output, rbf, verbose, measure)
+            self.fit_weights_and_radius(input, output, rbf, measure, verbose)
         else:
             self.fit_weights(input, output, radius, rbf)
 
@@ -282,27 +282,27 @@ class RBFnet(object):
         See scipy.optimize.minimize for: method, options, tol
         """
 
-            def fun(radius):
-                self.fit_weights(input, output, radius, rbf)
-                self.error = measure(output, self.predict(input))
-                return self.error
+        def fun(radius):
+            self.fit_weights(input, output, radius, rbf)
+            self.error = measure(output, self.predict(input))
+            return self.error
 
-            fmt = "{:<5}  {:<20}  {:<20}"
+        fmt = "{:<5}  {:<20}  {:<20}"
 
+        if verbose:
+            print(fmt.format("it.", "radius", "error"))
+
+        self.fcall = 0
+        def callback(params):
             if verbose:
-                print(fmt.format("it.", "radius", "error"))
+                self.fcall += 1
+                print(fmt.format(self.fcall, params[0], self.error))
 
-            self.fcall = 0
-            def callback(params):
-                if verbose:
-                    self.fcall += 1
-                    print(fmt.format(self.fcall, params[0], self.error))
-
-            radius_0 = 1
-            res = minimize(fun, radius_0, tol=1e-6,
-                           options=options,
-                           callback=callback,
-                           method=method)
+        radius_0 = 1
+        res = minimize(fun, radius_0, tol=tol,
+                       options=options,
+                       callback=callback,
+                       method=method)
 
     def plot_centers(self, axis, indeps=(0,1), *args, **kwargs):
         """
