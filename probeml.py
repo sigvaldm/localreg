@@ -448,33 +448,47 @@ validation_set = (currents[M:M2], density[M:M2])
 
 net = RBFnet()
 
-net.train(*training_set, radius=None, verbose=True, random_state=5, measure=mean_rel_error)
-pred = net.predict(training_set[0])
-npred = net.normalize_output(pred)
-ntrue = net.normalize_output(training_set[1])
-
-print(np.sqrt(net.residual/len(pred)))
-print(rms_error(npred,ntrue))
+# net.train(*training_set, radius=None, verbose=True, random_state=5, measure=mean_rel_error)
+# pred = net.predict(training_set[0])
+# npred = net.normalize_output(pred)
+# ntrue = net.normalize_output(training_set[1])
+# print(np.sqrt(net.residual/len(pred)))
+# print(rms_error(npred,ntrue))
 
 
 plt.figure()
-rs = np.logspace(-2, 3, 200)
-ns = [5,10,20]#,50,100]
-ns = [50]
+rs = np.logspace(-2, 3, 50) #200)
+ns = [5,7,10,15,20,50,100,200]
+# ns = [50]
 for i, n in enumerate(tqdm(ns)):
-    err = []
+    err_rms = []
+    err_mre = []
     net.adapt_normalization(*training_set)
     net.compute_centers(training_set[0], num=n, random_state=5)
     for r in tqdm(rs):
         net.fit_weights(*training_set, r)
-        # err.append(net.error(*training_set))
-        err.append(rms_error(training_set[1], net.predict(training_set[0])))
-    plt.loglog(rs, err, 'C{}'.format(i))
+        err_rms.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
+        # err_mre.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
+    # plt.subplot(211)
+    plt.loglog(rs, err_rms, 'C{}'.format(i), label='{} RBFs'.format(n))
+    # plt.subplot(212)
+    # plt.loglog(rs, err_mre, '--', color='C{}'.format(i))
 
-# for i, n in enumerate(tqdm(ns)):
-#     net = RBFnet()
-#     net.train(*training_set, num=n, random_state=5)
-#     plt.axvline(net.radius, color='C{}'.format(i))
+err = []
+for i, n in enumerate(tqdm(ns)):
+    net = RBFnet()
+    net.train(*training_set, num=n, random_state=5, measure=mean_rel_error)
+    plt.axvline(net.radius, color='C{}'.format(i))
+    err.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
+
+plt.xlabel('Radius [arbitrary units]')
+plt.ylabel('Mean relative error')
+plt.legend()
+plt.show()
+
+plt.semilogy(ns, err)
+plt.xlabel('Number of RBFs')
+plt.ylabel('Mean relative error')
 plt.show()
 
 # print(currents.shape)
