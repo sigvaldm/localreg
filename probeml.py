@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# TBD:
+# - Multiple dependent variables
+# - Test that validation error increases
+# - Save/load functions
+# - Let this be lib only
+# - Correlation plots
+
 import numpy as np
 from scipy.optimize import minimize, minimize_scalar
 import matplotlib.pyplot as plt
@@ -46,6 +53,12 @@ def plot_data(data, net):
 
 def gaussian(t):
     return np.exp(-0.5*t**2)
+
+def xgaussian(t):
+    return t*np.exp(-0.5*t**2)
+
+def powerbasis(t):
+    return t**1.8
 
 # Error metrics:
 # Pearson R
@@ -410,94 +423,54 @@ validation_set = (currents[M:M2], density[M:M2])
 # training_set = (currents[:M], temperature[:M])
 # validation_set = (currents[M:M2], temperature[M:M2])
 
-# centers = 50
-
-# net = RBFnet()
-# net.train(*training_set, centers=centers, radius=1.5, random_state=5)
-# net.train(*training_set, centers=centers, random_state=5)
-
-# pred = net.predict(training_set[0][:K])
-# error = net.error(*validation_set)
-# print("Relative validation error: ", error)
-
-# input_shift = np.mean(training_set[0], axis=0)
-# input_scale = np.std(training_set[0], axis=0)
-# input = (training_set[0]-input_shift)/input_scale
-
-# lower = np.min(input, axis=0)
-# upper = np.max(input, axis=0)
-# maxdist = max(upper-lower)
-# dim = len(upper)
-# radius_0 = maxdist/(centers**(1./dim))
-# print('guess: ', radius_0)
-
-# i = 0
-# def f(radius):
-#     net.train(*training_set, centers=centers, radius=radius, random_state=5, reuse=True)
-#     global i
-#     i = i + 1
-#     err = net.error(*training_set)
-#     print(i, radius[0], err)
-#     return err
-
-# radius_0 = 1
-# res = minimize(f, radius_0, tol=0.00001, options={'maxiter':100, 'disp':True},
-#                # method = 'powell')
-#                method = 'nelder-mead')
-# print(res.x)
-
 net = RBFnet()
 
-# net.train(*training_set, radius=None, verbose=True, random_state=5, measure=mean_rel_error)
-# pred = net.predict(training_set[0])
-# npred = net.normalize_output(pred)
-# ntrue = net.normalize_output(training_set[1])
-# print(np.sqrt(net.residual/len(pred)))
-# print(rms_error(npred,ntrue))
+# net.train(*training_set, num=1000, random_state=5, measure=mean_rel_error)
+print('Normalize')
+net.adapt_normalization(*training_set)
+print('Compute centers')
+net.compute_centers(training_set[0], num=10, random_state=5)
+print('Fit weights')
+net.fit_weights_and_radius(*training_set, measure=mean_rel_error, rbf=powerbasis)
+
+pred = net.predict(training_set[0])
+print(rms_error(pred,training_set[1]))
 
 
-plt.figure()
-rs = np.logspace(-2, 3, 50) #200)
-ns = [5,7,10,15,20,50,100,200]
-# ns = [50]
-for i, n in enumerate(tqdm(ns)):
-    err_rms = []
-    err_mre = []
-    net.adapt_normalization(*training_set)
-    net.compute_centers(training_set[0], num=n, random_state=5)
-    for r in tqdm(rs):
-        net.fit_weights(*training_set, r)
-        err_rms.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
-        # err_mre.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
-    # plt.subplot(211)
-    plt.loglog(rs, err_rms, 'C{}'.format(i), label='{} RBFs'.format(n))
-    # plt.subplot(212)
-    # plt.loglog(rs, err_mre, '--', color='C{}'.format(i))
+# plt.figure()
+# rs = np.logspace(-2, 3, 50) #200)
+# ns = [5,7,10,15,20,50,100,200]
+# # ns = [50]
+# for i, n in enumerate(tqdm(ns)):
+#     err_rms = []
+#     err_mre = []
+#     net.adapt_normalization(*training_set)
+#     net.compute_centers(training_set[0], num=n, random_state=5)
+#     for r in tqdm(rs):
+#         net.fit_weights(*training_set, r)
+#         err_rms.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
+#         # err_mre.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
+#     # plt.subplot(211)
+#     plt.loglog(rs, err_rms, 'C{}'.format(i), label='{} RBFs'.format(n))
+#     # plt.subplot(212)
+#     # plt.loglog(rs, err_mre, '--', color='C{}'.format(i))
 
-err = []
-for i, n in enumerate(tqdm(ns)):
-    net = RBFnet()
-    net.train(*training_set, num=n, random_state=5, measure=mean_rel_error)
-    plt.axvline(net.radius, color='C{}'.format(i))
-    err.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
+# err = []
+# for i, n in enumerate(tqdm(ns)):
+#     net = RBFnet()
+#     net.train(*training_set, num=n, random_state=5, measure=mean_rel_error)
+#     plt.axvline(net.radius, color='C{}'.format(i))
+#     err.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
 
-plt.xlabel('Radius [arbitrary units]')
-plt.ylabel('Mean relative error')
-plt.legend()
-plt.show()
+# plt.xlabel('Radius [arbitrary units]')
+# plt.ylabel('Mean relative error')
+# plt.legend()
+# plt.show()
 
-plt.semilogy(ns, err)
-plt.xlabel('Number of RBFs')
-plt.ylabel('Mean relative error')
-plt.show()
-
-# print(currents.shape)
-# plot_data(currents, net)
-
-# pred = net.predict(training_set[0][:K])
-# # print_table(zip(pred, density[0:K], (pred-density[0:K])/density[0:K]))
-# error = net.error(*validation_set)
-# print("Relative validation error optimized: ", error)
+# plt.semilogy(ns, err)
+# plt.xlabel('Number of RBFs')
+# plt.ylabel('Mean relative error')
+# plt.show()
 
 # plot = plt.plot
 # plt.figure()
@@ -505,5 +478,3 @@ plt.show()
 # # plot([1e11,12e11],[1e11,12e11], '-k', lw=0.8)
 # plot(training_set[1], net.predict(training_set[0]), '+', ms=3)
 # r = (min(training_set[1]), max(training_set[1]))
-# plot(r,r,'-k',lw=0.8)
-# plt.show()
