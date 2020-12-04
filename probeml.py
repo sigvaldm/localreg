@@ -6,6 +6,7 @@
 # - Save/load functions
 # - Let this be lib only
 # - Correlation plots
+# - Add version check on save/load
 
 import numpy as np
 from scipy.optimize import minimize, minimize_scalar
@@ -381,100 +382,45 @@ class RBFnet(object):
 
     def save(self, fname):
         """
-        Save trained model to file.
+        Save trained model to npz-file.
 
         Parameters
         ----------
         fname: string
             filename
         """
-        # Radius
-        # Centers
-        # Normalization
-        pass
+        import dill as pickle
+        np.savez_compressed(fname,
+                            input_scale=self.input_scale,
+                            input_shift=self.input_shift,
+                            output_scale=self.output_scale,
+                            output_shift=self.output_shift,
+                            centers=self.centers,
+                            coeffs=self.coeffs,
+                            radius=self.radius,
+                            rbf=pickle.dumps(self.rbf))
+        # with open(fname, 'wb') as file:
+        #     pickle.dump(self, file)
 
     def load(self, fname):
         """
-        Load a previously trained model from file.
+        Load a previously trained model from npz-file.
 
         Parameters
         ----------
         fname: string
             filename
         """
-        pass
-
-N = 100
-M = 9000
-M2 = 10000
-K = 20
-data = read_RBF_data(sys.argv[1])
-currents = data[:,0:4]
-density = data[:,4]
-temperature = data[:,5]
-voltage = data[:,6]
-
-training_set = (currents[:M], density[:M])
-validation_set = (currents[M:M2], density[M:M2])
-
-# training_set = (currents[:M], voltage[:M])
-# validation_set = (currents[M:M2], voltage[M:M2])
-
-# training_set = (currents[:M], temperature[:M])
-# validation_set = (currents[M:M2], temperature[M:M2])
-
-net = RBFnet()
-
-# net.train(*training_set, num=1000, random_state=5, measure=mean_rel_error)
-print('Normalize')
-net.adapt_normalization(*training_set)
-print('Compute centers')
-net.compute_centers(training_set[0], num=10, random_state=5)
-print('Fit weights')
-net.fit_weights_and_radius(*training_set, measure=mean_rel_error, rbf=powerbasis)
-
-pred = net.predict(training_set[0])
-print(rms_error(pred,training_set[1]))
-
-
-# plt.figure()
-# rs = np.logspace(-2, 3, 50) #200)
-# ns = [5,7,10,15,20,50,100,200]
-# # ns = [50]
-# for i, n in enumerate(tqdm(ns)):
-#     err_rms = []
-#     err_mre = []
-#     net.adapt_normalization(*training_set)
-#     net.compute_centers(training_set[0], num=n, random_state=5)
-#     for r in tqdm(rs):
-#         net.fit_weights(*training_set, r)
-#         err_rms.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
-#         # err_mre.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
-#     # plt.subplot(211)
-#     plt.loglog(rs, err_rms, 'C{}'.format(i), label='{} RBFs'.format(n))
-#     # plt.subplot(212)
-#     # plt.loglog(rs, err_mre, '--', color='C{}'.format(i))
-
-# err = []
-# for i, n in enumerate(tqdm(ns)):
-#     net = RBFnet()
-#     net.train(*training_set, num=n, random_state=5, measure=mean_rel_error)
-#     plt.axvline(net.radius, color='C{}'.format(i))
-#     err.append(mean_rel_error(validation_set[1], net.predict(validation_set[0])))
-
-# plt.xlabel('Radius [arbitrary units]')
-# plt.ylabel('Mean relative error')
-# plt.legend()
-# plt.show()
-
-# plt.semilogy(ns, err)
-# plt.xlabel('Number of RBFs')
-# plt.ylabel('Mean relative error')
-# plt.show()
-
-# plot = plt.plot
-# plt.figure()
-# # plot(density[:M2:10], net.predict(currents[:M2:10]), '+', ms=3)
-# # plot([1e11,12e11],[1e11,12e11], '-k', lw=0.8)
-# plot(training_set[1], net.predict(training_set[0]), '+', ms=3)
-# r = (min(training_set[1]), max(training_set[1]))
+        import dill as pickle
+        data = np.load(fname, allow_pickle=False)
+        self.input_scale = data['input_scale']
+        self.input_shift = data['input_shift']
+        self.output_scale = data['output_scale']
+        self.output_shift = data['output_shift']
+        self.centers = data['centers']
+        self.coeffs = data['coeffs']
+        self.radius = data['radius']
+        self.rbf = pickle.loads(data['rbf'])
+        # with open(fname, 'rb') as file:
+        #     self = pickle.load(file)
+        # return self
