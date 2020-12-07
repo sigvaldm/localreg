@@ -3,12 +3,7 @@
 # TBD:
 # - Multiple dependent variables
 # - Test that validation error increases
-# - Save/load functions
-# - Let this be lib only
-# - Correlation plots
 # - Add version check on save/load
-# - Implement iterative linear least squares
-# - Relative LLS
 
 import numpy as np
 from scipy.optimize import minimize
@@ -146,7 +141,7 @@ class RBFnet(object):
 
     def train(self, input, output, num=10, radius=None, rbf=gaussian,
               random_state=None, keep_aspect=False, verbose=True,
-              measure=rms_error):
+              measure=rms_error, relative=False, normalize=True):
         """
         Train the RBF net to learn the relation between input and output.
 
@@ -172,17 +167,23 @@ class RBFnet(object):
             Number of radial basis functions.
         """
 
-        if verbose: print('Adapting normalization')
-        self.adapt_normalization(input, output, keep_aspect)
+        if normalize:
+            if verbose: print('Adapting normalization')
+            self.adapt_normalization(input, output, keep_aspect)
+        else:
+            self.input_shift = 0
+            self.input_scale = 1
+            self.output_shift = 0
+            self.output_scale = 1
 
         if verbose: print('Computing centers')
         self.compute_centers(input, num, random_state)
 
         if verbose: print('Fitting weights')
         if radius is None:
-            self.fit_weights_and_radius(input, output, rbf, measure, verbose)
+            self.fit_weights_and_radius(input, output, rbf, measure, relative, verbose)
         else:
-            self.fit_weights(input, output, radius, rbf)
+            self.fit_weights(input, output, radius, rbf, relative)
 
     def adapt_normalization(self, input, output, keep_aspect=False):
         """
@@ -230,12 +231,11 @@ class RBFnet(object):
             exactly reproducible results this must be set manually. See
             sklearn.cluster.KMeans in Scikit-Learn.
         """
-        # inp = (input-self.input_shift)/self.input_scale
         inp = self.normalize_input(input)
         clustering = KMeans(n_clusters=num, random_state=random_state).fit(inp)
         self.centers = clustering.cluster_centers_
 
-    def fit_weights(self, input, output, radius=1, rbf=gaussian):
+    def fit_weights(self, input, output, radius=1, rbf=gaussian, relative=False):
         """
         Fit the weights to the training data using exact linear least squares.
 
@@ -263,8 +263,6 @@ class RBFnet(object):
 
         """
 
-        # inp = (input-self.input_shift)/self.input_scale
-        # outp = (output-self.output_shift)/self.output_scale
         inp = self.normalize_input(input)
         outp = self.normalize_output(output)
 
@@ -281,16 +279,19 @@ class RBFnet(object):
             distance = np.linalg.norm(inp[:,:]-self.centers[j,:], axis=1)
             matrix[:,j] = rbf(distance/radius)
 
-        coeffs, residual, rank, svalues = np.linalg.lstsq(matrix, outp, rcond=None)
+        if relative:
+            precond = (outp+self.output_shift/self.output_scale)**(-1)
+            coeffs, _, _, _ = np.linalg.lstsq(precond[:,None]*matrix, precond*outp, rcond=None)
+        else:
+            coeffs, _, _, _ = np.linalg.lstsq(matrix, outp, rcond=None)
+
         self.coeffs = coeffs
-        self.residual = residual
         self.rbf = rbf
         self.radius = radius
 
     def fit_weights_and_radius(self, input, output, rbf=gaussian,
-                               measure=rms_error, verbose=True,
-                               method='powell', options=None,
-                               tol=1e-6):
+                               measure=rms_error, relative=False, verbose=True,
+                               method='powell', options=None, tol=1e-6):
         """
         Similarly as the method fit_weights(), but this function uses an
         iterative minimizer to find the optimal radius.
@@ -309,7 +310,7 @@ class RBFnet(object):
         """
 
         def fun(radius):
-            self.fit_weights(input, output, radius, rbf)
+            self.fit_weights(input, output, radius, rbf, relative)
             self.error = measure(output, self.predict(input))
             return self.error
 
@@ -346,9 +347,28 @@ class RBFnet(object):
         Further accepts the same arguments as matplotlib.axis.plot.
         """
         indeps = list(indeps)
-        # unnormalized_centers = net.centers[:,indeps]*net.input_scale[indeps]+net.input_shift[indeps]
         unnormalized_centers = self.denormalize_input(net.centers)[:,indeps]
         axis.plot(*unnormalized_centers.T, *args, 'x', **kwargs)
+
+    def plot_bases(self, axis, input, *args, **kwargs):
+        bases = self.eval_bases(input)
+        pred  = self.predict(input)
+        axis.plot(input, pred, 'k', *args, **kwargs)
+        kwargs.pop('label', None)
+        for base in bases:
+            axis.plot(input, base, '--k', *args, **kwargs)
+
+    def eval_bases(self, input):
+        inp = self.normalize_input(input)
+
+        output = np.zeros((len(self.centers), inp.shape[0]))
+        for j in range(len(self.centers)):
+            distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
+            output[j] = self.coeffs[j]*self.rbf(distance/self.radius)
+
+        output = self.denormalize_output(output)
+
+        return output
 
     def predict(self, input):
         """
@@ -363,7 +383,6 @@ class RBFnet(object):
         -------
         numpy.ndarray where output[i] is the prediction of point i
         """
-        # inp = (input-self.input_shift)/self.input_scale
         inp = self.normalize_input(input)
 
         output = np.zeros(inp.shape[0])
@@ -371,7 +390,6 @@ class RBFnet(object):
             distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
             output += self.coeffs[j]*self.rbf(distance/self.radius)
 
-        # output = output*self.output_scale + self.output_shift
         output = self.denormalize_output(output)
 
         return output
