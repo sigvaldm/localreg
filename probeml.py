@@ -7,16 +7,14 @@
 # - Let this be lib only
 # - Correlation plots
 # - Add version check on save/load
+# - Implement iterative linear least squares
+# - Relative LLS
 
 import numpy as np
-from scipy.optimize import minimize, minimize_scalar
+from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-from tqdm import tqdm
-import sys
-from frmt import print_table
-from time import time, sleep
-from scipy.stats import pearsonr
+# from scipy.stats import pearsonr
 
 def read_RBF_data(fname):
     """
@@ -51,6 +49,16 @@ def plot_data(data, net):
         plt.xlabel('$I_{}\,[\mu A]$'.format(i))
         plt.ylabel('$I_{}\,[\mu A]$'.format(j))
     plt.show()
+
+def plot_corr(axis, true, pred, log=False, *args, **kwargs):
+    plot = axis.loglog if log else axis.plot
+    plot(true, pred, '+', *args, ms=4, **kwargs)
+    xmin, xmax = min(true), max(true)
+    ymin, ymax = min(pred), max(pred)
+    plot([xmin, xmax], [ymin, ymax], '--k')
+    axis.set_aspect('equal', 'box')
+    axis.set_xlabel('True')
+    axis.set_ylabel('Predicted')
 
 def gaussian(t):
     return np.exp(-0.5*t**2)
@@ -136,8 +144,8 @@ class RBFnet(object):
         self.output_shift = 0
         self.output_scale = 1
 
-    def train(self, input, output, num=50, radius=None, rbf=gaussian,
-              random_state=None, keep_aspect=False, verbose=False,
+    def train(self, input, output, num=10, radius=None, rbf=gaussian,
+              random_state=None, keep_aspect=False, verbose=True,
               measure=rms_error):
         """
         Train the RBF net to learn the relation between input and output.
@@ -164,9 +172,13 @@ class RBFnet(object):
             Number of radial basis functions.
         """
 
+        if verbose: print('Adapting normalization')
         self.adapt_normalization(input, output, keep_aspect)
+
+        if verbose: print('Computing centers')
         self.compute_centers(input, num, random_state)
 
+        if verbose: print('Fitting weights')
         if radius is None:
             self.fit_weights_and_radius(input, output, rbf, measure, verbose)
         else:
@@ -301,7 +313,7 @@ class RBFnet(object):
             self.error = measure(output, self.predict(input))
             return self.error
 
-        fmt = "{:<5}  {:<20}  {:<20}"
+        fmt = "  {:<5}  {:<20}  {:<20}"
 
         if verbose:
             print(fmt.format("it.", "radius", "error"))
