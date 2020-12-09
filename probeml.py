@@ -73,7 +73,7 @@ def plot_corr(axis, true, pred, log=False, *args, **kwargs):
     plot(true, pred, '+', *args, ms=4, **kwargs)
     xmin, xmax = min(true), max(true)
     ymin, ymax = min(pred), max(pred)
-    plot([xmin, xmax], [ymin, ymax], '--k')
+    plot([xmin, xmax], [xmin, xmax], '--k')
     axis.set_aspect('equal', 'box')
     axis.set_xlabel('True')
     axis.set_ylabel('Predicted')
@@ -435,8 +435,8 @@ class RBFnet(object):
         Further accepts the same arguments as matplotlib.axis.plot.
         """
         indeps = list(indeps)
-        unnormalized_centers = self.denormalize_input(net.centers)[:,indeps]
-        axis.plot(*unnormalized_centers.T, *args, 'x', **kwargs)
+        unnormalized_centers = self.denormalize_input(self.centers)[:,indeps]
+        axis.plot(*unnormalized_centers.T, *args, 'o', **kwargs)
 
     def eval_bases(self, input):
         """
