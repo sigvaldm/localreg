@@ -2,7 +2,9 @@ language: python
 python:
 - 3.5
 - 3.6
-- 3.7-dev
+- 3.7
+- 3.8
+- 3.9-dev
 before_install:
 - pip install "pytest>=3.6"
 - pip install pytest-cov
@@ -16,6 +18,6 @@ deploy:
   user: sigvaldm
   on:
     tags: true
-    python: 3.7-dev
+    python: 3.9-dev
   password:
     secure: B1Mha+sz9uEGMUsDlUmPyNwiaut2xiXi90QkB9eCXRdhuxhiREQp8c4+YuoDAN5jOriX4X/eU34W+UW5oN2fwdc1Y08PPvXHGoc/EK1NzYUIC9dJMBdDT97lRI5mUEJMQi5R/0YbmZlA8OI3Mf5jg1VXTbtmFtmjQjdoLL/BvcvALrLwJ4k5irm7GXWQuDkYyENQCiAgnWuQo0Ppxgxwqj/YiFQPjEA3knfYpNNnLkZgN2dcoP0mjb0whEZgo93wWbkvbTYJERQ18QnPUlkx+a7eqlf2SSBD20gOas4Xi2AFIn8mydTqNCP6JMnvGEyZ7qZ4XTo7C4Vu+Wjf4XJltwD4/V9iOG48ANeqM+rXqaKmVyWCkiEMNkqxqgKtSXrj3hYPwbeStRubOTileBKHLHRgEPIAglCllYc3ik++C9L9yWkOWbkCS6uX/ESiNtBTTBnXLxmpnBnn9kJS+Q+HiTU3VU3mYj+/C/wLt1jdXMzUsoK2NVqi9hSzq907KX5Nh9xqaGMVCg8d1uQL/ongybeblz9qCQMjSSWEpjSPDPHtc0ns/Tm8khFK2NkK2ryMeUP8EAzYKnHFQwWf1LmdeoWXoJVmt1/5VseCOUGXMtjX8oyk2nBzYg3W59l2lQ8RcGVZAV6xnEvkwkj5YbuAANyEJIXEcTUnxqTu7zkO7us=
