@@ -20,6 +20,7 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 from localreg.rbf import *
 from localreg import *
 import numpy as np
+import matplotlib.pyplot as plt
 import pytest
 from pytest import approx
 
