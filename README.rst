@@ -42,8 +42,8 @@ Local polynomial regression works by fitting a polynomial of degree ``degree`` t
 - ``biweight``
 - ``triweight``
 - ``tricube``
-- ``gaussian`` (non-compact)
 - ``cosine``
+- ``gaussian`` (non-compact)
 - ``logistic`` (non-compact)
 - ``sigmoid`` (non-compact)
 - ``silverman`` (non-compact)

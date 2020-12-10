@@ -1,3 +1,22 @@
+"""
+Copyright 2019 Sigvald Marholm <marholm@marebakken.com>
+
+This file is part of localreg.
+
+localreg is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+localreg is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with localreg.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 # TBD:
@@ -9,45 +28,6 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-
-def read_marchand_data(fname):
-    """
-    Read dataset in Marchand's RBF format.
-
-    Parameters
-    ----------
-    fname: string
-        filename
-
-    Returns
-    -------
-    numpy.array where data[i,j] is row i, column j
-    """
-    data = []
-    with open(fname) as file:
-        file.readline()
-        file.readline()
-        for line in file:
-            data.append(line.split())
-    data = np.array(data, dtype=float)
-    return data
-
-def plot_data(input, net):
-    """
-    Plot centers in RBFnet on top of input points to show coverage
-
-    Parameters
-    ----------
-    input: numpy.array
-    net: RBFnet
-    """
-    for s, (i, j) in enumerate([[0,1], [0,2], [0,3], [1,2], [1,3], [2,3]]):
-        plt.subplot(2,3,s+1)
-        plt.plot(input[:,i], input[:,j], '.')
-        net.plot_centers(plt.gca(), [i,j])
-        plt.xlabel('$I_{}\,[\mu A]$'.format(i))
-        plt.ylabel('$I_{}\,[\mu A]$'.format(j))
-    plt.show()
 
 def plot_corr(axis, true, pred, log=False, *args, **kwargs):
     """
@@ -71,8 +51,8 @@ def plot_corr(axis, true, pred, log=False, *args, **kwargs):
     """
     plot = axis.loglog if log else axis.plot
     plot(true, pred, '+', *args, ms=4, **kwargs)
-    xmin, xmax = min(true), max(true)
-    ymin, ymax = min(pred), max(pred)
+    xmin = min([min(true), min(pred)])
+    xmax = max([max(true), max(pred)])
     plot([xmin, xmax], [xmin, xmax], '--k')
     axis.set_aspect('equal', 'box')
     axis.set_xlabel('True')
@@ -293,7 +273,7 @@ class RBFnet(object):
         self.output_scale = np.std(output, axis=0)
         self.input_shift = np.mean(input, axis=0)
         if keep_aspect:
-            self.input_scale = np.std(input)
+            self.input_scale = np.sqrt(np.mean(np.linalg.norm(input-self.input_shift, axis=1)**2))
         else:
             self.input_scale = np.std(input, axis=0)
 
