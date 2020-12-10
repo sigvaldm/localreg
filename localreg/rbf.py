@@ -26,7 +26,6 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 from scipy.optimize import minimize
-import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 
 def plot_corr(axis, true, pred, log=False, *args, **kwargs):
