@@ -164,47 +164,9 @@ The figures show excellent agreement between the true and predicted data. In the
 
 When using multi-dimensional data normalization becomes more important. If the input variables have different standard deviation, e.g., if they are variables of entirely different physical dimensions, it will be difficult to adapt the network with few basis functions of radial shape, because it will be difficult to resolve the details in the "small" axes while spanning the data in the "large" axes. Normalization make the spread along the axes more comparable.
 
-
-Example 2
-~~~~~~~~~
-This example demonstrates multi-dimensional inputs. Due to the larger variability more basis functions are needed than in example 1. We also do not specify the radius in this case, but allow ``RBFnet`` to use an internal algorithm for choosing the radius that minimizes the RMS error (other error metrics may be specified using the ``measure`` parameter). While automatically tuning the radius works well in this example, it must be considered an experimental feature. It is also more time-consuming::
-
-    from localreg import RBFnet, plot_corr
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D # Enables 3d-projection 
-
-    x = np.linspace(0,2,30)
-    X, Y = np.meshgrid(x, x)
-
-    input = np.array([X.ravel(), Y.ravel()]).T
-    x, y = input.T
-    z = y*np.sin(2*np.pi*x)
-
-    net = RBFnet()
-    net.train(input, z, num=50)
-    z_hat = net.predict(input)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_wireframe(X, Y, z.reshape(X.shape), rcount=20, ccount=20)
-    ax.plot_surface(X, Y, z_hat.reshape(X.shape), alpha=0.5, color='green')
-    plt.show()
-
-    fig, ax = plt.subplots()
-    plot_corr(ax, z, z_hat)
-    plt.show()
-
-.. image:: examples/rbf2a.png
-.. image:: examples/rbf2b.png
-
-The figures show excellent agreement between the true and predicted data. In the first plot the wirefram is the true data, whereas the surface is the predicted data. The function ``plot_corr`` is handy to visualize the agreement between true and predicted data.
-
-When using multi-dimensional data normalization becomes more important. If the input variables have different standard deviation, e.g., if they are variables of entirely different physical dimensions, it will be difficult to adapt the network with few basis functions of radial shape, because it will be difficult to resolve the details in the "small" axes while spanning the data in the "large" axes. Normalization make the spread along the axes more comparable.
-
 Example 3
 ~~~~~~~~~
-Localreg comes with several error metrics for quantifying the error::
+Localreg comes with several error metrics for quantifying the error:
 
 - ``rms_error``
 - ``rms_rel_error``
