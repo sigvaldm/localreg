@@ -26,11 +26,11 @@ import pytest
 from pytest import approx
 
 def test_simple():
-    x = np.array([1,2]).reshape(-1,1)
-    y = np.array([1,1]).reshape(-1,1)
+    x = [1,2]
+    y = [1,1]
     net = RBFnet()
     net.train(x, y, radius=1, num=2, normalize=False, rbf=triangular)
-    assert net.predict(np.array([1.5]).reshape(-1,1))==1
+    assert net.predict([1.5])==1
 
 def test_complex():
     x = np.linspace(0,2*np.pi,100)

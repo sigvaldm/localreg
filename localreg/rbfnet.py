@@ -409,7 +409,9 @@ class RBFnet(object):
         input: numpy.array
             Array of values in the domain
         """
-        norm_input = (input-self.input_shift)/self.input_scale
+        norm_input = (np.array(input)-self.input_shift)/self.input_scale
+        if len(norm_input.shape)==1:
+            norm_input = norm_input.reshape(-1, 1)
         return norm_input
 
     def normalize_output(self, output):
@@ -421,7 +423,7 @@ class RBFnet(object):
         input: numpy.array
             Array of values in the codomain
         """
-        norm_output = (output-self.output_shift)/self.output_scale
+        norm_output = (np.array(output)-self.output_shift)/self.output_scale
         return norm_output
 
     def denormalize_input(self, norm_input):
@@ -433,7 +435,7 @@ class RBFnet(object):
         input: numpy.array
             Array of normalized values in the domain
         """
-        input = norm_input*self.input_scale + self.input_shift
+        input = np.array(norm_input)*self.input_scale + self.input_shift
         return input
 
     def denormalize_output(self, norm_output):
@@ -445,5 +447,5 @@ class RBFnet(object):
         input: numpy.array
             Array of normalized values in the codomain
         """
-        output = norm_output*self.output_scale + self.output_shift
+        output = np.array(norm_output)*self.output_scale + self.output_shift
         return output
