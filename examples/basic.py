@@ -7,9 +7,9 @@ x = np.linspace(1.5, 5, 2000)
 yf = np.sin(x*x)
 y = yf + 0.5*np.random.randn(*x.shape)
 
-y0 = localreg(x, y, degree=0, kernel=tricube, width=0.3)
-y1 = localreg(x, y, degree=1, kernel=tricube, width=0.3)
-y2 = localreg(x, y, degree=2, kernel=tricube, width=0.3)
+y0 = localreg(x, y, degree=0, kernel=rbf.tricube, width=0.3)
+y1 = localreg(x, y, degree=1, kernel=rbf.tricube, width=0.3)
+y2 = localreg(x, y, degree=2, kernel=rbf.tricube, width=0.3)
 
 plt.plot(x, y, '+', markersize=0.6, color='gray')
 plt.plot(x, yf, label='Ground truth ($\sin(x^2)$)')
