@@ -60,7 +60,7 @@ def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=Non
 
     if x0 is None: x0=x
 
-    y0 = np.zeros_like(x0)
+    y0 = np.zeros_like(x0, dtype=float)
 
     if frac is None:
 
