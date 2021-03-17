@@ -83,6 +83,13 @@ def test_localreg_narrow_kernel(caplog):
     assert np.isnan(y0)[0]
     assert(len(caplog.records) == 1)
 
+def test_localreg_integer():
+    x = np.linspace(0, 1, 10, dtype=int)
+    y = x # Simple linear function should be exactly matched by degree=1
+    x0 = np.array([0.0192091, 0.28458])
+    y0 = localreg(x, y, x0, degree=1, width=0.2)
+    assert np.allclose(x0, y0)
+
 #
 # PARAMETRIC KERNEL TESTS
 #
