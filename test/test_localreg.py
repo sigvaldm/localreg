@@ -88,7 +88,7 @@ def test_localreg_integer():
     y = 0.5*x # Simple linear function should be exactly matched by degree=1
     x0 = np.array([1], dtype=int)
     y0 = localreg(x, y, x0, degree=1, width=3)
-    assert y0[0]==0.5
+    assert y0[0]==pytest.approx(0.5)
     # assert np.allclose(x0, y0)
 
 #
