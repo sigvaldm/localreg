@@ -72,15 +72,15 @@ def test_localreg_realistic():
     x0 = np.array([2., 3.])
 
     # Testing all orders
-    assert np.allclose(localreg(x, y, x0, degree=0, kernel=epanechnikov, width=1),
+    assert np.allclose(localreg(x, y, x0, degree=0, kernel=epanechnikov, radius=1),
                        [-14.63365203, 8.9780852], rtol=1e-3)
-    assert np.allclose(localreg(x, y, x0, degree=1, kernel=epanechnikov, width=1),
+    assert np.allclose(localreg(x, y, x0, degree=1, kernel=epanechnikov, radius=1),
                        [-14.5487543 , 5.21322664], rtol=1e-3)
-    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, width=1),
+    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, radius=1),
                        [-14.4523815 , 3.77134959], rtol=1e-3)
 
-    # Testing width
-    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, width=2),
+    # Testing radius
+    assert np.allclose(localreg(x, y, x0, degree=2, kernel=epanechnikov, radius=2),
                        [ -14.80997735,   7.00785276], rtol=1e-3)
 
     # Testing frac
@@ -91,7 +91,7 @@ def test_localreg_narrow_kernel(caplog):
     x = np.array([0., 1., 2.])
     y = np.array([0., 1., 2.])
     x0 = np.array([0.5])
-    y0 = localreg(x, y, x0, degree=2, kernel=epanechnikov, width=0.4)
+    y0 = localreg(x, y, x0, degree=2, kernel=epanechnikov, radius=0.4)
     assert np.isnan(y0)[0]
     assert(len(caplog.records) == 1)
 
@@ -99,7 +99,7 @@ def test_localreg_integer():
     x = np.array([0, 3, 6, 9], dtype=int)
     y = 0.5*x # Simple linear function should be exactly matched by degree=1
     x0 = np.array([1], dtype=int)
-    y0 = localreg(x, y, x0, degree=1, width=3)
+    y0 = localreg(x, y, x0, degree=1, radius=3)
     assert y0[0]==pytest.approx(0.5)
     # assert np.allclose(x0, y0)
 

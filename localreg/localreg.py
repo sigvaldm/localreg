@@ -21,7 +21,7 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 #   One could consider making the kernels callable objects. These objects could
 #   then have a member function without if-testing, which is faster in case it
 #   is known that all datapoints are to be included. This is the case when
-#   frac!=None. It could also have a property for its width?
+#   frac!=None. It could also have a property for its radius?
 #
 
 import numpy as np
@@ -83,7 +83,7 @@ def polyfit(x, y, x0, weights=None, degree=2):
 
     return X0.dot(beta)
 
-def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=None):
+def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, radius=1, frac=None):
 
     if x0 is None: x0=x
 
@@ -102,7 +102,7 @@ def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=Non
 
         for i, xi in enumerate(x0):
 
-            weights = kernel(np.linalg.norm(x-xi[None,:], axis=1)/width)
+            weights = kernel(np.linalg.norm(x-xi[None,:], axis=1)/radius)
 
             # Filter out the datapoints with zero weights.
             # Speeds up regressions with kernels of local support.
@@ -119,9 +119,9 @@ def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=Non
 
             dist = np.linalg.norm(x-xi[None,:], axis=1)
             inds = np.argsort(dist)[:N]
-            width = dist[inds][-1]
+            radius = dist[inds][-1]
 
-            weights = kernel(dist[inds]/width)
+            weights = kernel(dist[inds]/radius)
 
             y0[i] = polyfit(x[inds], y[inds], xi[None,:],
                             weights, degree=degree)

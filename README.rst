@@ -32,7 +32,7 @@ Introduction
 ~~~~~~~~~~~~
 Local polynomial regression is performed using the function::
 
-    localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=None)
+    localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, radius=1, frac=None)
 
 where ``x`` and ``y`` are the x and y-values of the data to smooth, respectively.
 ``x0`` is the x-values at which to compute smoothed values. By default this is the same as ``x``, but beware that the run time is proportional to the size of ``x0``, so if you have many datapoints, it may be worthwhile to specify a smaller ``x0`` yourself.
@@ -53,9 +53,9 @@ Local polynomial regression works by fitting a polynomial of degree ``degree`` t
 
 Having a kernel wich tapers off toward the edges, i.e., not a rectangular kernel, results in a smooth output.
 
-The width of the kernel can be scaled by the parameter ``width``, which is actually half of the kernel-width for kernels with compact support. For kernels with non-compact support, like the Gaussian kernel, it is simply a scaling parameter, akin to the standard deviation. Having a wider kernel and including more datapoints lowers the noise (variance) but increases the bias as the regression will not be able to capture variations on a scale much narrower than the kernel window.
+The radius of the kernel can be scaled by the parameter ``radius``, which in 1D is half of the kernel-width for kernels with compact support. For kernels with non-compact support, like the Gaussian kernel, it is simply a scaling parameter, akin to the standard deviation. Having a wider kernel and including more datapoints lowers the noise (variance) but increases the bias as the regression will not be able to capture variations on a scale much narrower than the kernel window.
 
-For unevenly spaced datapoints, having a fixed width means that a variable number of datapoints are included in the window, and hence the noise/variance is variable too. However, the bias is fixed. Using a width that varies such that a fixed number of datapoints is included leads instead to constant noise/variance but fixed bias. This can be acheived by specifying ``frac`` which overrules ``width`` and specifies the fraction of all datapoints to be included in the width of the kernel.
+For unevenly spaced datapoints, having a fixed radius means that a variable number of datapoints are included in the window, and hence the noise/variance is variable too. However, the bias is fixed. Using a radius that varies such that a fixed number of datapoints is included leads instead to constant noise/variance but fixed bias. This can be acheived by specifying ``frac`` which overrules ``radius`` and specifies the fraction of all datapoints to be included in the radius of the kernel.
 
 Example 1
 ~~~~~~~~~
@@ -70,9 +70,9 @@ The below example exhibits several interesting features::
     yf = np.sin(x*x)
     y = yf + 0.5*np.random.randn(*x.shape)
 
-    y0 = localreg(x, y, degree=0, kernel=rbf.tricube, width=0.3)
-    y1 = localreg(x, y, degree=1, kernel=rbf.tricube, width=0.3)
-    y2 = localreg(x, y, degree=2, kernel=rbf.tricube, width=0.3)
+    y0 = localreg(x, y, degree=0, kernel=rbf.tricube, radius=0.3)
+    y1 = localreg(x, y, degree=1, kernel=rbf.tricube, radius=0.3)
+    y2 = localreg(x, y, degree=2, kernel=rbf.tricube, radius=0.3)
 
     plt.plot(x, y, '+', markersize=0.6, color='gray')
     plt.plot(x, yf, label='Ground truth ($\sin(x^2)$)')
@@ -109,7 +109,7 @@ For multivariate input, the coordinates of data point ``i`` are given by ``x[i,:
     m = np.arange(0, 1.05, 0.05)
     X, Y = np.meshgrid(m,m)
     x0 = np.array([np.ravel(X), np.ravel(Y)]).T
-    z0 = localreg(x, y, x0, degree=degree, width=0.2)
+    z0 = localreg(x, y, x0, degree=degree, radius=0.2)
     Z = z0.reshape(X.shape)
 
     ax.plot_wireframe(X, Y, Z, rcount=10, ccount=10, color='green')

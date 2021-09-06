@@ -15,7 +15,7 @@ ax = fig.add_subplot(111, projection='3d')
 m = np.arange(0, 1.05, 0.05)
 X, Y = np.meshgrid(m,m)
 x0 = np.array([np.ravel(X), np.ravel(Y)]).T
-z0 = localreg(x, y, x0, degree=degree, width=0.2)
+z0 = localreg(x, y, x0, degree=degree, radius=0.2)
 Z = z0.reshape(X.shape)
 
 ax.plot_wireframe(X, Y, Z, rcount=10, ccount=10, color='green')
