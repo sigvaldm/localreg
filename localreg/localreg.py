@@ -34,36 +34,18 @@ logging.basicConfig()
 
 def polyfit(x, y, x0, weights=None, degree=2):
 
-    if len(x)==0:
-        return np.nan*np.ones_like(x0)
+    if len(x.shape) == 1:
+        x = x.reshape(-1,1) # No copy. Only makes a view with different shape.
 
-    if weights is None:
-        weights = np.ones_like(x)
-
-    s = np.sqrt(weights)
-
-    X = x[:, None]**np.arange(degree + 1)
-    X0 = x0[:, None]**np.arange(degree + 1)
-
-    lhs = X*s[:, None]
-    rhs = y*s
-
-    # This is what NumPy uses for default from version 1.15 onwards,
-    # and what 1.14 uses when rcond=None. Computing it here ensures
-    # support for older versions of NumPy.
-    rcond = np.finfo(lhs.dtype).eps * max(*lhs.shape)
-
-    beta = np.linalg.lstsq(lhs, rhs, rcond=rcond)[0]
-
-    return X0.dot(beta)
-
-def polyfitm(x, y, x0, weights=None, degree=2):
+    if len(x0.shape) == 1:
+        x0 = x0.reshape(-1,1) # No copy.
 
     n_samples, n_indeps = x.shape
     n_samples_out, _ = x0.shape
 
     if len(x)==0:
-        return np.nan*np.ones(n_samples)
+        tmp = np.nan*np.ones(n_samples_out)
+        return tmp
 
     if weights is None:
         weights = np.ones(n_samples)
@@ -105,44 +87,11 @@ def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=Non
 
     if x0 is None: x0=x
 
-    y0 = np.zeros_like(x0, dtype=float)
+    if len(x.shape) == 1:
+        x = x.reshape(-1,1) # No copy. Only makes a view with different shape.
 
-    if frac is None:
-
-        for i, xi in enumerate(x0):
-
-            weights = kernel(np.abs(x-xi)/width)
-
-            # Filter out the datapoints with zero weights.
-            # Speeds up regressions with kernels of local support.
-            inds = np.where(np.abs(weights)>1e-10)[0]
-
-            y0[i] = polyfit(x[inds], y[inds], np.array([xi]),
-                            weights[inds], degree=degree)
-
-    else:
-
-        N = int(frac*len(x))
-
-        for i, xi in enumerate(x0):
-
-            dist = np.abs(x-xi)
-            inds = np.argsort(dist)[:N]
-            width = dist[inds][-1]
-
-            weights = kernel(dist[inds]/width)
-
-            y0[i] = polyfit(x[inds], y[inds], np.array([xi]),
-                            weights, degree=degree)
-
-    if np.any(np.isnan(y0)):
-        logger.warning("Kernel do not always span any data points")
-
-    return y0
-
-def localregm(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=None):
-
-    if x0 is None: x0=x
+    if len(x0.shape) == 1:
+        x0 = x0.reshape(-1,1) # No copy.
 
     n_samples, n_indeps = x.shape
     n_samples_out, _ = x0.shape
@@ -159,9 +108,8 @@ def localregm(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=No
             # Speeds up regressions with kernels of local support.
             inds = np.where(np.abs(weights)>1e-10)[0]
 
-            tmp = polyfitm(x[inds], y[inds], xi[None,:],
+            y0[i] = polyfit(x[inds], y[inds], xi[None,:],
                             weights[inds], degree=degree)
-            y0[i] = tmp
 
     else:
 
@@ -175,7 +123,7 @@ def localregm(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=No
 
             weights = kernel(dist[inds]/width)
 
-            y0[i] = polyfitm(x[inds], y[inds], xi[None,:],
+            y0[i] = polyfit(x[inds], y[inds], xi[None,:],
                             weights, degree=degree)
 
     if np.any(np.isnan(y0)):
