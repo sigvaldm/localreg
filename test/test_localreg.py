@@ -39,6 +39,12 @@ def test_polyfit_simple_average():
     x0 = np.array([0, 1, 2])
     assert np.allclose(polyfit(x, y, x0, degree=0), [1, 1, 1])
 
+def test_polyfit_exact_polynomial():
+    x = np.random.rand(50, 2)
+    y = x[:,0]*x[:,1]
+    assert not np.allclose(polyfit(x, y, x, degree=1), y)
+    assert np.allclose(polyfit(x, y, x, degree=2), y)
+
 def test_polyfit_realistic():
     x = np.array([-6.89438   ,  7.94300378, 5.5221823 ,   9.77749217, -0.35979986,
                    2.01456739,  4.80691814, 3.22260756,  -7.12156073, -8.69959441])
@@ -51,6 +57,12 @@ def test_polyfit_realistic():
                        [-0.85479608, -0.49940979, -0.14402349], rtol=1e-3)
     assert np.allclose(polyfit(x, y, x0, degree=2),
                        [0.65209843, 0.89184061, 1.05446368], rtol=1e-3)
+
+def test_localreg_exact_polynomial():
+    x = np.random.rand(50, 2)
+    y = x[:,0]*x[:,1]
+    assert not np.allclose(localreg(x, y, x, degree=1), y)
+    assert np.allclose(localreg(x, y, x, degree=2), y)
 
 def test_localreg_realistic():
     x = np.array([-6.89438   ,  7.94300378, 5.5221823 ,   9.77749217, -0.35979986,
