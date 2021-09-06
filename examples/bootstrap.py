@@ -19,14 +19,14 @@ for n in range(N):
     ind = np.random.randint(0, len(x), len(x))
     xb = x[ind]
     yb = y[ind]
-    yarr[n,:] = localreg(xb, yb, x0, degree=2, kernel=tricube, width=0.4)
+    yarr[n,:] = localreg(xb, yb, x0, degree=2, kernel=tricube, radius=0.4)
     # plt.plot(x0, yarr[n,:], linewidth=0.5, color='black')
 
 lower = np.percentile(yarr,  2.5, axis=0)
 upper = np.percentile(yarr, 97.5, axis=0)
 plt.fill_between(x0, lower, upper, color='gray', alpha=0.5)
 
-y0 = localreg(x, y, x0, degree=2, kernel=tricube, width=0.4)
+y0 = localreg(x, y, x0, degree=2, kernel=tricube, radius=0.4)
 plt.plot(x0, y0, label='Local regression')
 
 # ym = np.average(yarr, axis=0)

@@ -96,6 +96,8 @@ class RBFnet(object):
         """
         inp = self.normalize_input(input)
 
+        # TBD: This loop can probably be removed. For multiple output the
+        # output of this function must be a 2D array.
         output = np.zeros(inp.shape[0])
         for j in range(len(self.centers)):
             distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
@@ -243,11 +245,16 @@ class RBFnet(object):
             "weights, but had {} when computing centers"\
             .format(inp.shape[1], self.centers.shape[1])
 
+        # TBD: Matrix is the same for multiple output
         matrix = np.zeros((len(inp), len(self.centers)), dtype=float)
         for j in range(len(self.centers)):
             distance = np.linalg.norm(inp[:,:]-self.centers[j,:], axis=1)
             matrix[:,j] = rbf(distance/radius)
 
+        # TBD: For multiple output, one could either consider running this for each
+        # output variable, or one could try to squeeze it into one vector and do
+        # least squares on the whole thing. That would probably lead to stacking
+        # the matrix. I wonder if it is possible to do that in a sparse way?
         if relative:
             precond = (outp+self.output_shift/self.output_scale)**(-1)
             coeffs, _, _, _ = np.linalg.lstsq(precond[:,None]*matrix,
@@ -423,6 +430,7 @@ class RBFnet(object):
         input: numpy.array
             Array of values in the codomain
         """
+        # TBD: For multiple output this must be similar to normalize_input
         norm_output = (np.array(output)-self.output_shift)/self.output_scale
         return norm_output
 

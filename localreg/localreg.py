@@ -21,11 +21,12 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 #   One could consider making the kernels callable objects. These objects could
 #   then have a member function without if-testing, which is faster in case it
 #   is known that all datapoints are to be included. This is the case when
-#   frac!=None. It could also have a property for its width?
+#   frac!=None. It could also have a property for its radius?
 #
 
 import numpy as np
 import logging
+import itertools as it
 from . import rbf
 
 logger = logging.getLogger('localreg')
@@ -33,16 +34,42 @@ logging.basicConfig()
 
 def polyfit(x, y, x0, weights=None, degree=2):
 
+    if len(x.shape) == 1:
+        x = x.reshape(-1,1) # No copy. Only makes a view with different shape.
+
+    if len(x0.shape) == 1:
+        x0 = x0.reshape(-1,1) # No copy.
+
+    n_samples, n_indeps = x.shape
+    n_samples_out, _ = x0.shape
+
     if len(x)==0:
-        return np.nan*np.ones_like(x0)
+        tmp = np.nan*np.ones(n_samples_out)
+        return tmp
 
     if weights is None:
-        weights = np.ones_like(x)
+        weights = np.ones(n_samples)
 
     s = np.sqrt(weights)
 
-    X = x[:, None]**np.arange(degree + 1)
-    X0 = x0[:, None]**np.arange(degree + 1)
+    # Multivariate bases (1, x, y, x*y, ...) are represented as tuples of exponents.
+    B = it.product(*it.repeat(np.arange(degree+1), n_indeps)) # Cartesian product
+    B = np.array(list(filter(lambda a: sum(a)<=degree, B)))
+    # B = sorted(B, key=sum) # not really necessary
+
+    X = np.ones((n_samples, len(B)))
+    X0 = np.ones((n_samples_out, len(B)))
+
+    for i in range(len(B)):
+
+        # Un-optimized:
+        # for j in range(x.shape[1]):
+        #     X[:,i] *= x[:,j]**B[i,j]
+        #     X0[:,i] *= x0[:,j]**B[i,j]
+
+        # Optimized away for-loop:
+        X[:,i] = np.product(x[:,:]**B[i,:], axis=1)
+        X0[:,i] = np.product(x0[:,:]**B[i,:], axis=1)
 
     lhs = X*s[:, None]
     rhs = y*s
@@ -56,38 +83,47 @@ def polyfit(x, y, x0, weights=None, degree=2):
 
     return X0.dot(beta)
 
-def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, width=1, frac=None):
+def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, radius=1, frac=None):
 
     if x0 is None: x0=x
 
-    y0 = np.zeros_like(x0, dtype=float)
+    if len(x.shape) == 1:
+        x = x.reshape(-1,1) # No copy. Only makes a view with different shape.
+
+    if len(x0.shape) == 1:
+        x0 = x0.reshape(-1,1) # No copy.
+
+    n_samples, n_indeps = x.shape
+    n_samples_out, _ = x0.shape
+
+    y0 = np.zeros(n_samples_out, dtype=float)
 
     if frac is None:
 
         for i, xi in enumerate(x0):
 
-            weights = kernel(np.abs(x-xi)/width)
+            weights = kernel(np.linalg.norm(x-xi[None,:], axis=1)/radius)
 
             # Filter out the datapoints with zero weights.
             # Speeds up regressions with kernels of local support.
             inds = np.where(np.abs(weights)>1e-10)[0]
 
-            y0[i] = polyfit(x[inds], y[inds], np.array([xi]),
+            y0[i] = polyfit(x[inds], y[inds], xi[None,:],
                             weights[inds], degree=degree)
 
     else:
 
-        N = int(frac*len(x))
+        N = int(frac*n_samples)
 
         for i, xi in enumerate(x0):
 
-            dist = np.abs(x-xi)
+            dist = np.linalg.norm(x-xi[None,:], axis=1)
             inds = np.argsort(dist)[:N]
-            width = dist[inds][-1]
+            radius = dist[inds][-1]
 
-            weights = kernel(dist[inds]/width)
+            weights = kernel(dist[inds]/radius)
 
-            y0[i] = polyfit(x[inds], y[inds], np.array([xi]),
+            y0[i] = polyfit(x[inds], y[inds], xi[None,:],
                             weights, degree=degree)
 
     if np.any(np.isnan(y0)):
