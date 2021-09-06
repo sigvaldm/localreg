@@ -2,7 +2,7 @@ localreg
 =========
 
 .. image:: https://travis-ci.com/sigvaldm/localreg.svg?branch=master
-    :target: https://travis-ci.com/sigvaldm/localreg
+    :target: https://app.travis-ci.com/sigvaldm/localreg
 
 .. image:: https://coveralls.io/repos/github/sigvaldm/localreg/badge.svg?branch=master
     :target: https://coveralls.io/github/sigvaldm/localreg?branch=master
