@@ -1,5 +1,4 @@
-localreg
-=========
+![localreg](logo.png)
 
 .. image:: https://travis-ci.com/sigvaldm/localreg.svg?branch=master
     :target: https://app.travis-ci.com/sigvaldm/localreg
