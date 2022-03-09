@@ -32,56 +32,75 @@ from . import rbf
 logger = logging.getLogger('localreg')
 logging.basicConfig()
 
+class Polynomial:
+
+    def _get_matrix(self, x):
+
+        B = self.basis
+
+        n_samples, n_indeps = x.shape
+        X = np.ones((n_samples, len(B)))
+
+        for i in range(len(B)):
+
+            # Un-optimized:
+            # for j in range(x.shape[1]):
+            #     X[:,i] *= x[:,j]**B[i,j]
+            #     X0[:,i] *= x0[:,j]**B[i,j]
+
+            # Optimized away for-loop:
+            X[:,i] = np.product(x[:,:]**B[i,:], axis=1)
+
+        return X
+
+    def fit(self, x, y, weights=None, degree=2):
+
+        if len(x.shape) == 1:
+            x = x.reshape(-1,1) # No copy. Only makes a view with different shape.
+
+        n_samples, n_indeps = x.shape
+        if weights is None:
+            weights = np.ones(n_samples)
+
+        s = np.sqrt(weights)
+
+        # Multivariate bases (1, x, y, x*y, ...) are represented as tuples of exponents.
+        B = it.product(*it.repeat(np.arange(degree+1), n_indeps)) # Cartesian product
+        B = np.array(list(filter(lambda a: sum(a)<=degree, B)))
+        # B = sorted(B, key=sum) # not really necessary
+        self.basis = B
+
+        if len(x)==0:
+            self.beta = np.nan*np.ones(len(B))
+            return
+
+        X = self._get_matrix(x)
+
+        lhs = X*s[:, None]
+        rhs = y*s
+
+        # This is what NumPy uses for default from version 1.15 onwards,
+        # and what 1.14 uses when rcond=None. Computing it here ensures
+        # support for older versions of NumPy.
+        rcond = np.finfo(lhs.dtype).eps * max(*lhs.shape)
+
+        self.beta = np.linalg.lstsq(lhs, rhs, rcond=rcond)[0]
+
+    def __call__(self, x0):
+
+        if len(x0.shape) == 1:
+            x0 = x0.reshape(-1,1) # No copy.
+
+        n_samples_out, _ = x0.shape
+
+        X0 = self._get_matrix(x0)
+
+        return X0.dot(self.beta)
+
 def polyfit(x, y, x0, weights=None, degree=2):
-
-    if len(x.shape) == 1:
-        x = x.reshape(-1,1) # No copy. Only makes a view with different shape.
-
-    if len(x0.shape) == 1:
-        x0 = x0.reshape(-1,1) # No copy.
-
-    n_samples, n_indeps = x.shape
-    n_samples_out, _ = x0.shape
-
-    if len(x)==0:
-        tmp = np.nan*np.ones(n_samples_out)
-        return tmp
-
-    if weights is None:
-        weights = np.ones(n_samples)
-
-    s = np.sqrt(weights)
-
-    # Multivariate bases (1, x, y, x*y, ...) are represented as tuples of exponents.
-    B = it.product(*it.repeat(np.arange(degree+1), n_indeps)) # Cartesian product
-    B = np.array(list(filter(lambda a: sum(a)<=degree, B)))
-    # B = sorted(B, key=sum) # not really necessary
-
-    X = np.ones((n_samples, len(B)))
-    X0 = np.ones((n_samples_out, len(B)))
-
-    for i in range(len(B)):
-
-        # Un-optimized:
-        # for j in range(x.shape[1]):
-        #     X[:,i] *= x[:,j]**B[i,j]
-        #     X0[:,i] *= x0[:,j]**B[i,j]
-
-        # Optimized away for-loop:
-        X[:,i] = np.product(x[:,:]**B[i,:], axis=1)
-        X0[:,i] = np.product(x0[:,:]**B[i,:], axis=1)
-
-    lhs = X*s[:, None]
-    rhs = y*s
-
-    # This is what NumPy uses for default from version 1.15 onwards,
-    # and what 1.14 uses when rcond=None. Computing it here ensures
-    # support for older versions of NumPy.
-    rcond = np.finfo(lhs.dtype).eps * max(*lhs.shape)
-
-    beta = np.linalg.lstsq(lhs, rhs, rcond=rcond)[0]
-
-    return X0.dot(beta)
+    poly = Polynomial()
+    poly.fit(x, y, weights, degree)
+    return poly(x0)
 
 def localreg(x, y, x0=None, degree=2, kernel=rbf.epanechnikov, radius=1, frac=None):
 
