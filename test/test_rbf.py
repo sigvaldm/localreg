@@ -36,9 +36,51 @@ def test_complex():
     x = np.linspace(0,2*np.pi,100)
     y = np.sin(x) + 2
     net = RBFnet()
-    net.train(x[:,None], y)
-    y_hat = net.predict(x[:,None])
+    net.train(x, y)
+    y_hat = net.predict(x)
     assert max_rel_error(y, y_hat) < 1e-6
+
+def test_multivariate_input():
+
+    x = 2*np.random.rand(900,2)
+    y = x[:,0]*np.sin(2*np.pi*x[:,1])
+
+    net = RBFnet()
+    net.train(x, y, num=60, radius=1)
+    y_hat = net.predict(x)
+
+    assert rms_error(y_hat, y) < 0.02
+
+def test_multivariate_output():
+    # Check the property that a 2-output network yields the same as two
+    # 1-output networks with the same basis functions.
+
+    x = np.linspace(0,1,10)
+    y = np.zeros((len(x), 2))
+    y[:,0] = np.sin(2*np.pi*x)
+    y[:,1] = np.cos(2*np.pi*x)
+
+    net = RBFnet() # Multivariate output
+    net0 = RBFnet() # Output 0 only
+    net1 = RBFnet() # Output 1 only
+
+    net.train(x, y, num=10, radius=0.3)
+
+    net0.adapt_normalization(x, y[:,0])
+    net1.adapt_normalization(x, y[:,1])
+
+    net0.centers = net.centers
+    net1.centers = net.centers
+
+    net0.fit_weights(x, y[:,0], radius=0.3)
+    net1.fit_weights(x, y[:,1], radius=0.3)
+
+    yhat = net.predict(x)
+    yhat0 = net0.predict(x)
+    yhat1 = net1.predict(x)
+
+    assert np.allclose(yhat0, yhat[:,0])
+    assert np.allclose(yhat1, yhat[:,1])
 
 def test_eval_bases():
     x = np.array([1,2]).reshape(-1,1)
