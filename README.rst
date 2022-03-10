@@ -173,8 +173,8 @@ A radial basis function is a function ``g(t)``, possibly with a multidimensional
 
 This sum is fitted to a set of data points ``(x,y)``. Typically, the RBF is a Gaussian function, although any it can be any function of one argument (the radial distance), for instance any of the kernals listed above. In ``RBFnet``, the centers ``c_j`` are first determined to get a good coverage of the domain by means of K-means clustering. The radius ``r``, here taken to be the same for all terms, is a hyperparameter to be tuned. With this, linear least squares is used to fit the weights ``w_j``.
 
-Example 1
-~~~~~~~~~
+Example 1: Getting started
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 This example demonstrates how 10 radial basis functions can be used to fit a sine curve::
 
     from localreg import RBFnet
@@ -196,8 +196,8 @@ This example demonstrates how 10 radial basis functions can be used to fit a sin
 
 The dashed lines plotted using the ``plot_bases`` method are the individual terms in the weighted sum after training. The learning capacity of an RBF network is primarily determined by the number of basis functions, decided by the ``num`` parameter. In this case 10 basis functions makes for a good fit, but data with larger variability and more dimensions may require more basis functions. Other parameters that can be adjusted is the radius of the basis functions, as well as the analytical expression of the radial basis function itself. The radius is in terms of standard deviations of the input points, and is therefore always a number of order of magnitude one. By default Gaussian basis functions are used, but any of the kernels mentioned for local polynomial regression can be specified using the ``rbf`` parameter, as well as custom functions of one argument. Normalization can be turned off using the ``normalize`` argument. In this case the radius has similar magnitude as the input.
 
-Example 2
-~~~~~~~~~
+Example 2: Multivariate input
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This example demonstrates multi-dimensional inputs. Due to the larger variability more basis functions are needed than in example 1. We also do not specify the radius in this case, but allow ``RBFnet`` to use an internal algorithm for choosing the radius that minimizes the RMS error (other error measures may be specified using the ``measure`` parameter). While automatically tuning the radius works well in this example, it must be considered an experimental feature. It is also more time-consuming::
 
     from localreg import RBFnet, plot_corr
@@ -233,8 +233,8 @@ The figures show excellent agreement between the true and predicted data. In the
 
 When using multi-dimensional data normalization becomes more important. If the input variables have different standard deviation, e.g., if they are variables of entirely different physical dimensions, it will be difficult to adapt the network with few basis functions of radial shape, because it will be difficult to resolve the details in the "small" axes while spanning the data in the "large" axes. Normalization make the spread along the axes more comparable.
 
-Example 3
-~~~~~~~~~
+Example 3: Error metrics and relative least squares
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Localreg comes with several error metrics for quantifying the error:
 
 - ``rms_error``
@@ -289,3 +289,31 @@ Output::
 .. image:: examples/rbf3.png
 
 This example fits the data to a tan-function, which becomes very large towards the right edge. Linear least squares (LLS) algorithms solves the so-called normal equations, which is equivalent to minimizing the squared sum of residuals or the root-mean-square (RMS) of the error. When the data spans a large range, the error can quickly become very large for the smaller values, because the algorithm optimizes the errors in absolute terms. In this example, the linear least squares algorithm makes a poor (and oscialltory) prediction of smaller values, because the absolute error in the larger values are made smaller that way. However, when working on data spanning several orders of magnitude, the relative error is often more important. By training with ``relative=True``, the normal equations are preconditioned such that the root-mean-square of the relative errors (RMSE) are minimized instead of RMSE.
+
+Example 4: Multivariate output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Both the input and the output may be multidimensional. In this example, the input is univariate, but the output multivariate::
+
+Output::
+
+    from localreg import RBFnet
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    x = np.linspace(0,1,100)
+    y = np.zeros((len(x), 2))
+    y[:,0] = np.sin(2*np.pi*x)
+    y[:,1] = np.cos(2*np.pi*x)
+
+    net = RBFnet()
+    net.train(x, y)
+    yhat = net.predict(x)
+
+    plt.plot(x, y[:,0], 'C0', label='Ground truth')
+    plt.plot(x, y[:,1], 'C1', label='Ground truth')
+    plt.plot(x, yhat[:,0], ':k', label='Prediction')
+    plt.plot(x, yhat[:,1], ':k', label='Prediction')
+    plt.legend()
+    plt.show()
+
+.. image:: examples/rbf4.png
