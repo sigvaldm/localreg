@@ -20,7 +20,6 @@ along with localreg.  If not, see <http://www.gnu.org/licenses/>.
 #!/usr/bin/env python
 
 # TBD:
-# - Multiple dependent variables
 # - Test that validation error increases
 # - Add version check on save/load
 
@@ -91,23 +90,16 @@ class RBFnet(object):
         Parameters
         ----------
         input: numpy.ndarray
-            input[i,j] is prediction point i, independent variable j (x_j)
+            input[i,j] is prediction point i, independent variable j (x_j). For
+            univariate input, the last index can be omitted.
 
         Returns
         -------
         numpy.ndarray where output[i,j] is the prediction of point i, dependent
-        variable j (y_j)
+        variable j (y_j). The last index is omitted, if the last index were
+        omitted during training.
         """
         inp = self.normalize_input(input)
-
-        # # TBD: This loop can probably be removed. For multiple output the
-        # # output of this function must be a 2D array.
-        # output = np.zeros(inp.shape[0])
-        # for j in range(len(self.centers)):
-        #     distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
-        #     output += self.coeffs[j]*self.rbf(distance/self.radius)
-
-        output = np.zeros((inp.shape[0], self.coeffs.shape[1]))
 
         # In diff[k,i,l], 
         # k is the index of the data point,
@@ -119,21 +111,8 @@ class RBFnet(object):
         # basis function i
         distance = np.linalg.norm(diff, axis=2)
 
-        # print(diff.shape)
-        # print(distance.shape)
-
         rbf_matrix = self.rbf(distance/self.radius)
-
-        # print(rbf_matrix.shape)
-        # print(self.coeffs.shape)
-
         output = rbf_matrix.dot(self.coeffs)
-
-        # print(output.shape)
-
-        # for j in range(len(self.centers)):
-        #     distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
-        #     output[0] += self.coeffs[j,0]*self.rbf(distance/self.radius)
 
         output = self.denormalize_output(output)
 
@@ -158,12 +137,12 @@ class RBFnet(object):
         Parameters
         ----------
         input: numpy.ndarray
-            input[i,j] is data point i, independent variable j (x_j)
+            input[i,j] is data point i, independent variable j (x_j). For
+            univariate input the last index can be omitted.
 
         output: numpy.ndarray
-            output[i,j] is data point i, dependent variable j (y_j). Each RBFnet object
-            only represents one dependent variable. Use multiple objects for
-            multiple dependent variables.
+            output[i,j] is data point i, dependent variable j (y_j). For
+            univariate output, the last index can be omitted.
 
         num: integer
             Number of radial basis functions (learning capacity of network).
