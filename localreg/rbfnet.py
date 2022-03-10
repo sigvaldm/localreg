@@ -62,15 +62,18 @@ class RBFnet(object):
     """
     A radial basis function (RBF) machine learning network.
 
-    An arbitrary and possibly unknown function f(x) is approximated as a
-    sum of radial basis functions g,
+    A function f(x) approximates data y (possibly vector-valued) using a sum of
+    radial basis functions g:
 
-        f(x) ~ sum_i w_i g(|x-c_i|/r)
+        y_i ~ f_i(x) = sum_j w_ij g(|x-c_j|/r)
 
-    x is the input, possibly a vector. c_i and w_i are the centers and weights
-    of basis function i, while r is its radius (the same for all basis
-    functions). c_i, w_i and r are found during training, and are later used
-    for prediction.
+    x is the input, also possibly a vector. c_j is the center coordinate of
+    basis function j, while w_ij is the weight of this basis function for
+    output variable i. The center coordinate is the same for all output
+    variables y_i (for different centers per ouptut, use different RBFnet
+    objects). r is the radius, which is the same for all basis functions. This
+    is the inverse of the scaling parameter epsilon sometimes used. c_i, w_ij
+    and r are fitted during training, and are later used for predictions.
 
     The methods train() and predict() are the two most important to start with.
     """
@@ -92,16 +95,45 @@ class RBFnet(object):
 
         Returns
         -------
-        numpy.ndarray where output[i] is the prediction of point i
+        numpy.ndarray where output[i,j] is the prediction of point i, dependent
+        variable j (y_j)
         """
         inp = self.normalize_input(input)
 
-        # TBD: This loop can probably be removed. For multiple output the
-        # output of this function must be a 2D array.
-        output = np.zeros(inp.shape[0])
-        for j in range(len(self.centers)):
-            distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
-            output += self.coeffs[j]*self.rbf(distance/self.radius)
+        # # TBD: This loop can probably be removed. For multiple output the
+        # # output of this function must be a 2D array.
+        # output = np.zeros(inp.shape[0])
+        # for j in range(len(self.centers)):
+        #     distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
+        #     output += self.coeffs[j]*self.rbf(distance/self.radius)
+
+        output = np.zeros((inp.shape[0], self.coeffs.shape[1]))
+
+        # In diff[k,i,l], 
+        # k is the index of the data point,
+        # i is the index of the basis function,
+        # l is the independent (input) variable index
+        diff = inp[:,None,:] - self.centers[None,:,:]
+
+        # distance[k,i] is then the euclidian distance between data point k and
+        # basis function i
+        distance = np.linalg.norm(diff, axis=2)
+
+        # print(diff.shape)
+        # print(distance.shape)
+
+        rbf_matrix = self.rbf(distance/self.radius)
+
+        # print(rbf_matrix.shape)
+        # print(self.coeffs.shape)
+
+        output = rbf_matrix.dot(self.coeffs)
+
+        # print(output.shape)
+
+        # for j in range(len(self.centers)):
+        #     distance = np.linalg.norm(inp-self.centers[j,:], axis=1)
+        #     output[0] += self.coeffs[j,0]*self.rbf(distance/self.radius)
 
         output = self.denormalize_output(output)
 
@@ -129,7 +161,7 @@ class RBFnet(object):
             input[i,j] is data point i, independent variable j (x_j)
 
         output: numpy.ndarray
-            output[i] is data point i, dependent variable (y). Each RBFnet object
+            output[i,j] is data point i, dependent variable j (y_j). Each RBFnet object
             only represents one dependent variable. Use multiple objects for
             multiple dependent variables.
 
@@ -245,7 +277,7 @@ class RBFnet(object):
             "weights, but had {} when computing centers"\
             .format(inp.shape[1], self.centers.shape[1])
 
-        # TBD: Matrix is the same for multiple output
+        # The matrix is the same for each output
         matrix = np.zeros((len(inp), len(self.centers)), dtype=float)
         for j in range(len(self.centers)):
             distance = np.linalg.norm(inp[:,:]-self.centers[j,:], axis=1)
