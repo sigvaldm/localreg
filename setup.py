@@ -31,6 +31,7 @@ setup(name='localreg',
       version=version,
       description='Local Polynomial Regression',
       long_description=long_description,
+      long_description_content_type='text/x-rst',
       author='Sigvald Marholm',
       author_email='marholm@marebakken.com',
       url='https://github.com/sigvaldm/localreg.git',
@@ -49,4 +50,3 @@ setup(name='localreg',
         'Programming Language :: Python :: 3.9',
         ]
      )
-

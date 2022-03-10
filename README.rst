@@ -292,7 +292,7 @@ This example fits the data to a tan-function, which becomes very large towards t
 
 Example 4: Multivariate output
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Both the input and the output may be multidimensional. In this example, the input is univariate, but the output multivariate::
+Both the input and the output may be multidimensional. In this example, the input is univariate, but the output multivariate.
 
 Output::
 
