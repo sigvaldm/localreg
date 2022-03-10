@@ -166,11 +166,12 @@ class RBFnet(object):
             sklearn.cluster.KMeans in Scikit-Learn.
 
         keep_aspect: bool
-            Whether to scale all independent variables by the same factor
-            during normalization, i.e., to keep the aspect ratio, or to scale
-            them independently such that the standard deviation is one along
-            each axis. It may make sense to keep the aspect ratio if the input
-            variables have the same physical dimension.
+            Whether to scale all independent (input) and dependent (output)
+            variables by the same factor during normalization, i.e., to keep
+            the aspect ratio, or to scale them independently such that the
+            standard deviation is one along each axis. It may make sense to
+            keep the aspect ratio if the input variables have the same physical
+            dimension.
 
         verbose: bool
             Print progress information
@@ -219,13 +220,16 @@ class RBFnet(object):
 
         See RBFnet.train() for explanation of parameters.
         """
-        self.output_shift = np.mean(output, axis=0)
-        self.output_scale = np.std(output, axis=0)
         self.input_shift = np.mean(input, axis=0)
+        self.output_shift = np.mean(output, axis=0)
+
         if keep_aspect:
             self.input_scale = np.sqrt(np.mean(np.linalg.norm(input-self.input_shift, axis=1)**2))
+            output_ = output.reshape(len(output), 1) # Make sure it is always 2D
+            self.output_scale = np.sqrt(np.mean(np.linalg.norm(output_-self.output_shift, axis=1)**2))
         else:
             self.input_scale = np.std(input, axis=0)
+            self.output_scale = np.std(output, axis=0)
 
     def compute_centers(self, input, num, random_state=None):
         """
@@ -256,16 +260,14 @@ class RBFnet(object):
             "weights, but had {} when computing centers"\
             .format(inp.shape[1], self.centers.shape[1])
 
-        # The matrix is the same for each output
+        # The matrix is the same for each output. The lstsq function
+        # automatically apply the least squares for each column using the same
+        # matrix.
         matrix = np.zeros((len(inp), len(self.centers)), dtype=float)
         for j in range(len(self.centers)):
             distance = np.linalg.norm(inp[:,:]-self.centers[j,:], axis=1)
             matrix[:,j] = rbf(distance/radius)
 
-        # TBD: For multiple output, one could either consider running this for each
-        # output variable, or one could try to squeeze it into one vector and do
-        # least squares on the whole thing. That would probably lead to stacking
-        # the matrix. I wonder if it is possible to do that in a sparse way?
         if relative:
             precond = (outp+self.output_shift/self.output_scale)**(-1)
             coeffs, _, _, _ = np.linalg.lstsq(precond[:,None]*matrix,
@@ -441,7 +443,6 @@ class RBFnet(object):
         input: numpy.array
             Array of values in the codomain
         """
-        # TBD: For multiple output this must be similar to normalize_input
         norm_output = (np.array(output)-self.output_shift)/self.output_scale
         return norm_output
 
