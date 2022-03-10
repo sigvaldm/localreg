@@ -30,7 +30,8 @@ from . import rbf as kernels, metrics
 
 def plot_corr(axis, true, pred, log=False, *args, **kwargs):
     """
-    Visualize correlation between true and predicted values
+    Visualize correlation between true and predicted values. For multivariate
+    output, only one variable must be considered at a time.
 
     Parameters
     ----------
@@ -260,20 +261,30 @@ class RBFnet(object):
             "weights, but had {} when computing centers"\
             .format(inp.shape[1], self.centers.shape[1])
 
+        # In diff[k,i,l], 
+        # k is the index of the data point,
+        # i is the index of the basis function,
+        # l is the independent (input) variable index
+        diff = inp[:,None,:] - self.centers[None,:,:]
+
+        # distance[k,i] is then the euclidian distance between data point k and
+        # basis function i
+        distance = np.linalg.norm(diff, axis=2)
+
         # The matrix is the same for each output. The lstsq function
         # automatically apply the least squares for each column using the same
         # matrix.
-        matrix = np.zeros((len(inp), len(self.centers)), dtype=float)
-        for j in range(len(self.centers)):
-            distance = np.linalg.norm(inp[:,:]-self.centers[j,:], axis=1)
-            matrix[:,j] = rbf(distance/radius)
+        rbf_matrix = rbf(distance/radius)
+
+        # TBD: This matrix is generated the same way here and in predict().
+        # Remove duplicate code.
 
         if relative:
             precond = (outp+self.output_shift/self.output_scale)**(-1)
-            coeffs, _, _, _ = np.linalg.lstsq(precond[:,None]*matrix,
+            coeffs, _, _, _ = np.linalg.lstsq(precond[:,None]*rbf_matrix,
                                               precond*outp, rcond=None)
         else:
-            coeffs, _, _, _ = np.linalg.lstsq(matrix, outp, rcond=None)
+            coeffs, _, _, _ = np.linalg.lstsq(rbf_matrix, outp, rcond=None)
 
         self.coeffs = coeffs
         self.rbf = rbf
@@ -379,6 +390,8 @@ class RBFnet(object):
         """
         Evaluate each basis function separately for a sequence of input points.
 
+        NB: This function is not yet adapted to multivariate output.
+
         Parameters
         ----------
         input: numpy.ndarray
@@ -402,6 +415,8 @@ class RBFnet(object):
     def plot_bases(self, axis, input, *args, **kwargs):
         """
         Plot the basis functions for a sequence of input points.
+
+        NB: This function is not yet adapted to multivariate output.
 
         Parameters
         ----------
