@@ -367,10 +367,12 @@ class RBFnet(object):
         #     self = pickle.load(file)
         # return self
 
-    def plot_centers(self, axis, indeps=(0,1), *args, **kwargs):
+    def plot_centers(self, axis, indeps=(0,1), normalized=False,
+                     radius='disk', **kwargs):
         """
-        Plot the cluster centers projected onto a plane spanned by the axes
-        of two of the independent variables.
+        Plot the centers of the basis functions projected onto a plane spanned
+        by the axes of two of the independent variables. The radius can also be
+        indicated by a disk.
 
         Parameters
         ----------
@@ -380,11 +382,49 @@ class RBFnet(object):
         indeps: list or tuple with two elements
             The independent variables to use as x- and y-axes
 
-        Further accepts the same arguments as matplotlib.axis.plot.
+        normalized: bool
+            Whether to plot the centers on normalized axes or not
+
+        radius: 'disk' (default), 'circle' or None
+            Whether to indicate the radius with a disk, a circle, or not at all.
+
+        Further accepts the same keyword arguments as matplotlib.axis.plot.
         """
         indeps = list(indeps)
-        unnormalized_centers = self.denormalize_input(self.centers)[:,indeps]
-        axis.plot(*unnormalized_centers.T, *args, 'o', **kwargs)
+        centers = self.centers
+
+        theta = np.linspace(0, 2*np.pi, 60)
+
+        # Prepending an index for points along the ellipse
+        pts = np.zeros((len(theta), *centers.shape))
+        pts[:] = centers
+
+        # Although we strictly speaking only need two indeps in the pts array,
+        # we keep all so we can use denormalize_input()
+        pts[:,:,indeps[0]] += self.radius*np.cos(theta[:,None])
+        pts[:,:,indeps[1]] += self.radius*np.sin(theta[:,None])
+
+        if not normalized:
+            pts = self.denormalize_input(pts)
+            centers = self.denormalize_input(centers)
+
+        centers = centers[:,indeps]
+
+        x = pts[:,:,indeps[0]]
+        y = pts[:,:,indeps[1]]
+
+        if 'linestyle' not in kwargs:
+            kwargs['linestyle'] = ''
+
+        if 'marker' not in kwargs:
+            kwargs['marker'] = 'x'
+
+        line, = axis.plot(*centers.T, **kwargs)
+
+        if radius=='disk':
+            axis.fill(x, y, alpha=0.2, color=line.get_color())
+        elif radius=='circle':
+            axis.plot(x, y, color=line.get_color())
 
     def eval_bases(self, input):
         """
