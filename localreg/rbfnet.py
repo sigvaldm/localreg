@@ -83,6 +83,7 @@ class RBFnet(object):
         self.input_scale = 1
         self.output_shift = 0
         self.output_scale = 1
+        self.radius = 1
 
     def predict(self, input):
         """

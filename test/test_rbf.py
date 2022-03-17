@@ -106,7 +106,7 @@ def test_plot_centers():
     net = RBFnet()
     net.centers = np.array([[1,10], [2,20]])
     fig, ax = plt.subplots()
-    net.plot_centers(ax)
+    net.plot_centers(ax, radius=None)
     x_, y_ = ax.lines[0].get_xydata().T
     assert np.array_equal(x_, [1,2])
     assert np.array_equal(y_, [10,20])
