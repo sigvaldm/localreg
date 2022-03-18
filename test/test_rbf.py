@@ -211,13 +211,13 @@ def test_keep_aspect():
 def test_complex_input():
     net = RBFnet()
     input = np.array([[1+1j], [1-1j], [-1-1j], [-1+1j]])
-    output = np.real(x)+np.imag(x)
+    output = np.real(input)+np.imag(input)
     net.train(input, output, num=3)
-    assert np.allclose(output, net.predict(input))
+    assert np.allclose(output, net.predict(input), atol=1e-5)
 
 def test_complex_output():
     net = RBFnet()
     input = np.array([0,1,2])
     output = input+1j*input
     net.train(input, output, num=2)
-    assert np.allclose(output, net.predict(input))
+    assert np.allclose(output, net.predict(input), atol=1e-5)

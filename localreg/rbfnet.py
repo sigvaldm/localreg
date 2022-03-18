@@ -254,13 +254,9 @@ class RBFnet(object):
             inp_ = inp
             was_complex = False
 
-        print(inp)
-        print(inp_)
-
         clustering = KMeans(n_clusters=num, random_state=random_state).fit(inp_)
 
         centers = clustering.cluster_centers_
-        print(centers)
 
         if was_complex:
             centers = centers[:,:n_indeps]+1j*centers[:,n_indeps:]
