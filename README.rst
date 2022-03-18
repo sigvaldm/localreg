@@ -12,7 +12,10 @@
 .. image:: https://zenodo.org/badge/185620541.svg
     :target: https://zenodo.org/badge/latestdoi/185620541
 
-Smoothing of noisy data series through multivariate *local polynomial regression* (including LOESS/LOWESS), and *radial basis function* (RBF) neural network.
+Localreg is a collection of kernel-based statistical methods:
+
+- Smoothing of noisy data series through multivariate *local polynomial regression* (including LOESS/LOWESS).
+- Multivariate and complex-valued *radial basis function* (RBF) regression.
 
 Installation
 ------------
@@ -171,7 +174,7 @@ A radial basis function is a function ``g(t)``, possibly with a multidimensional
 
     y_i = sum_j w_j g(||x_j-c_j||/r)
 
-This sum is fitted to a set of data points ``(x,y)``. Typically, the RBF is a Gaussian function, although any it can be any function of one argument (the radial distance), for instance any of the kernals listed above. In ``RBFnet``, the centers ``c_j`` are first determined to get a good coverage of the domain by means of K-means clustering. The radius ``r``, here taken to be the same for all terms, is a hyperparameter to be tuned. With this, linear least squares is used to fit the weights ``w_j``.
+This sum is fitted to a set of data points ``(x,y)``. Typically, the RBF is a Gaussian function, although any it can be any function of one argument (the radial distance), for instance any of the kernals listed above. In ``RBFnet``, the centers ``c_j`` are first determined to get a good coverage of the domain by means of K-means clustering. The radius ``r``, here taken to be the same for all terms, is a hyperparameter to be tuned. With this, linear least squares is used to fit the weights ``w_j``. Both the input and output can be complex-valued.
 
 Example 1: Getting started
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -317,3 +320,7 @@ Output::
     plt.show()
 
 .. image:: examples/rbf4.png
+
+Example 5: Matrix- or tensor-valued input and output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+It is also possible to use `RBFnet` on matrix- or tensor-valued input and output, although this requires the user to reshape the input and output. A matrix or a tensor input is nothing more than a multivariate input, with the inputs arranged in a particular shape. Thus, to use `RBFnet`, use Numpy's `reshape` method to make it conforming to `RBFnet`. The output can likewise be reshaped prior to training, and be shaped back to a matrix or tensor after prediction.

@@ -22,12 +22,12 @@ import numpy as np
 def rms_error(true, pred):
     """Root-mean-square of error"""
     e = pred-true
-    return np.sqrt(np.sum(e**2)/len(e))
+    return np.sqrt(np.sum(np.abs(e)**2)/len(e))
 
 def rms_rel_error(true, pred):
     """Root-mean-square of relative error"""
     e = (pred-true)/true
-    return np.sqrt(np.sum(e**2)/len(e))
+    return np.sqrt(np.sum(np.abs(e)**2)/len(e))
 
 def max_abs_error(true, pred):
     """Maximum absolute error"""

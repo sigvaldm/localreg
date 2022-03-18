@@ -241,8 +241,31 @@ class RBFnet(object):
         See RBFnet.train() for explanation of parameters.
         """
         inp = self.normalize_input(input)
-        clustering = KMeans(n_clusters=num, random_state=random_state).fit(inp)
-        self.centers = clustering.cluster_centers_
+
+        if np.iscomplexobj(inp):
+            # KMeans does not support complex numbers.
+            # Arrange imaginary axes as independent variables.
+            n_points, n_indeps = inp.shape
+            inp_ = np.zeros((n_points, 2*n_indeps), dtype=np.float64)
+            inp_[:,:n_indeps] = np.real(inp)
+            inp_[:,n_indeps:] = np.imag(inp)
+            was_complex = True
+        else:
+            inp_ = inp
+            was_complex = False
+
+        print(inp)
+        print(inp_)
+
+        clustering = KMeans(n_clusters=num, random_state=random_state).fit(inp_)
+
+        centers = clustering.cluster_centers_
+        print(centers)
+
+        if was_complex:
+            centers = centers[:,:n_indeps]+1j*centers[:,n_indeps:]
+
+        self.centers = centers
 
     def fit_weights(self, input, output, radius=1, rbf=kernels.gaussian, relative=False):
         """
