@@ -2,13 +2,12 @@ language: python
 python:
 - 3.5
 - 3.6
-- 3.7
+# - 3.7 # Temporarily disabling 3.7 due to bug in third-party tools
 - 3.8
 - 3.9-dev
 before_install:
 - pip install "pytest>=3.6"
 - pip install pytest-cov
-- pip install "importlib-metadata<5" # Fixes build issue with coveralls
 - pip install coveralls
 script:
 - pytest
