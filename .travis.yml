@@ -8,6 +8,7 @@ python:
 before_install:
 - pip install "pytest>=3.6"
 - pip install pytest-cov
+- pip install "importlib-metadata>=6" # Fixes build issue with coveralls
 - pip install coveralls
 script:
 - pytest
