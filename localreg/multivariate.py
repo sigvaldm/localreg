@@ -27,7 +27,7 @@ for i in range(len(B)):
     #     X[:,i] *= x[:,j]**B[i,j]
 
     # Optimized away for-loop:
-    X[:,i] = np.product(x[:,:]**B[i,:], axis=1)
+    X[:,i] = np.prod(x[:,:]**B[i,:], axis=1)
 
 print('GT')
 print(X)

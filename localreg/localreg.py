@@ -68,8 +68,8 @@ def polyfit(x, y, x0, weights=None, degree=2):
         #     X0[:,i] *= x0[:,j]**B[i,j]
 
         # Optimized away for-loop:
-        X[:,i] = np.product(x[:,:]**B[i,:], axis=1)
-        X0[:,i] = np.product(x0[:,:]**B[i,:], axis=1)
+        X[:,i] = np.prod(x[:,:]**B[i,:], axis=1)
+        X0[:,i] = np.prod(x0[:,:]**B[i,:], axis=1)
 
     lhs = X*s[:, None]
     rhs = y*s
